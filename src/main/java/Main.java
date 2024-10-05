@@ -1,4 +1,6 @@
 import Utils.AppConfig;
+import Utils.Color;
+import Utils.TerminalHelper;
 import com.google.gson.Gson;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
@@ -7,7 +9,6 @@ import org.jline.keymap.BindingReader;
 import org.jline.keymap.KeyMap;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
-import org.jline.utils.InfoCmp;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
@@ -31,14 +32,23 @@ public class Main {
 
     static Gson gson = new Gson();
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
+        Terminal terminal = TerminalBuilder.builder()
+                .system(true)
+                .jansi(true)
+                .build();
+        terminal.enterRawMode();
+        log.info("Starting...");
+        menuConsole(terminal);
+    }
+
+    private static void menuConsole(Terminal terminal) {
 
         try {
-            Terminal terminal = TerminalBuilder.builder()
-                    .system(true)
-                    .jansi(true)
-                    .build();
-            terminal.enterRawMode();
+
+//            log.info("Up/Down with W/S");
+//            log.info("Quit/Confirm with Q/E");
+
             BindingReader bindingReader = new BindingReader(terminal.reader());
 
             List<String> options = Arrays.asList("Option 1", "Option 2", "Option 3", "Exit");
@@ -52,7 +62,11 @@ public class Main {
 
             while (true) {
 
-                terminal.puts(InfoCmp.Capability.clear_screen);
+//                terminal.puts(InfoCmp.Capability.clear_screen);
+
+                TerminalHelper.printLn(terminal, Color.GREEN, "==> Up/Down with W/S");
+                TerminalHelper.printLn(terminal, Color.GREEN, "==> Quit/Confirm with Q/E");
+
                 printMenu(options, selectedIndex);
 
                 String key = bindingReader.readBinding(keyMap);
@@ -71,7 +85,6 @@ public class Main {
                     case "QUIT":
                         terminal.writer().println("Exiting...");
                         terminal.flush();
-//                        terminal.close();
                         return;
                     case "ENTER":
                         if (options.get(selectedIndex).equals("Exit")) {
@@ -109,7 +122,7 @@ public class Main {
                 terminal.writer().println("Goodbye!");
                 break;
             default:
-                terminal.writer().println("Invalid option!");
+                TerminalHelper.printLn(terminal, Color.RED, "Invalid option!");
                 break;
         }
     }
