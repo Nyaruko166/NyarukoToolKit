@@ -1,5 +1,6 @@
-import Utils.AppConfig;
+import Model.AppConfig;
 import Utils.Color;
+import Utils.YtdlUtil;
 import Utils.TerminalHelper;
 import com.google.gson.Gson;
 import org.apache.commons.io.FileUtils;
@@ -9,49 +10,71 @@ import org.jline.keymap.BindingReader;
 import org.jline.keymap.KeyMap;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.select.Elements;
+import org.jline.utils.InfoCmp;
 
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.net.URL;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
+import java.util.Scanner;
 
 
 public class Main {
 
-    private static final Logger log = LogManager.getLogger(Main.class);
+    static final Logger log = LogManager.getLogger(Main.class);
 
-    public static File configFile = new File("./libs/config.json");
+    static final File configFile = new File("./libs/config.json");
 
-    static Gson gson = new Gson();
+    static AppConfig configLoaded = new AppConfig();
+
+    static final Scanner scanner = new Scanner(System.in);
+
+    static final Gson gson = new Gson();
+
+    static YtdlUtil ytdlUtil = new YtdlUtil();
 
     public static void main(String[] args) throws IOException {
+
+        firstTimeConfig();
+        log.info("Reading config...");
+        configLoaded = gson.fromJson(new FileReader(configFile), AppConfig.class);
+
         Terminal terminal = TerminalBuilder.builder()
                 .system(true)
                 .jansi(true)
                 .build();
         terminal.enterRawMode();
-        log.info("Starting...");
         menuConsole(terminal);
+    }
+
+    // Method to handle the selected option
+    private static void handleMenuSelection(String selectedOption, Terminal terminal) throws IOException {
+        switch (selectedOption) {
+            case "Check for update":
+                checkForUpdate(terminal);
+                break;
+            case "Option 2":
+                method2(terminal);
+                break;
+            case "Option 3":
+                method3(terminal);
+                break;
+            case "Exit":
+                terminal.writer().println("Goodbye!");
+                break;
+            default:
+                TerminalHelper.printLn(terminal, Color.RED, "Invalid option!");
+                break;
+        }
     }
 
     private static void menuConsole(Terminal terminal) {
 
         try {
-
-//            log.info("Up/Down with W/S");
-//            log.info("Quit/Confirm with Q/E");
-
             BindingReader bindingReader = new BindingReader(terminal.reader());
 
-            List<String> options = Arrays.asList("Option 1", "Option 2", "Option 3", "Exit");
+            List<String> options = Arrays.asList("Check for update", "Option 2", "Option 3");
             int selectedIndex = 0;
 
             KeyMap<String> keyMap = new KeyMap<>();
@@ -60,10 +83,10 @@ public class Main {
             keyMap.bind("QUIT", "q");        // Q key to exit
             keyMap.bind("ENTER", "e");      // Enter key
 
+
             while (true) {
 
-//                terminal.puts(InfoCmp.Capability.clear_screen);
-
+                terminal.puts(InfoCmp.Capability.clear_screen);
                 TerminalHelper.printLn(terminal, Color.GREEN, "==> Up/Down with W/S");
                 TerminalHelper.printLn(terminal, Color.GREEN, "==> Quit/Confirm with Q/E");
 
@@ -83,15 +106,10 @@ public class Main {
                         selectedIndex = (selectedIndex < options.size() - 1) ? selectedIndex + 1 : 0;
                         break;
                     case "QUIT":
-                        terminal.writer().println("Exiting...");
+                        TerminalHelper.printLn(terminal, Color.RED, "Exiting...");
                         terminal.flush();
                         return;
                     case "ENTER":
-                        if (options.get(selectedIndex).equals("Exit")) {
-                            terminal.writer().println("Exiting...");
-                            terminal.flush();
-                            return;
-                        }
                         handleMenuSelection(options.get(selectedIndex), terminal);
                         terminal.writer().println("Selected: " + options.get(selectedIndex));
                         terminal.flush();
@@ -106,30 +124,11 @@ public class Main {
         }
     }
 
-    // Method to handle the selected option
-    private static void handleMenuSelection(String selectedOption, Terminal terminal) throws IOException {
-        switch (selectedOption) {
-            case "Option 1":
-                method1(terminal);
-                break;
-            case "Option 2":
-                method2(terminal);
-                break;
-            case "Option 3":
-                method3(terminal);
-                break;
-            case "Exit":
-                terminal.writer().println("Goodbye!");
-                break;
-            default:
-                TerminalHelper.printLn(terminal, Color.RED, "Invalid option!");
-                break;
+    private static void checkForUpdate(Terminal terminal) throws IOException {
+        if (ytdlUtil.downloadLastedVersion(configLoaded) == null) {
+            log.info("You're up to date!");
+            log.info("Press any key to continue...");
         }
-    }
-
-    // Dummy method 1
-    private static void method1(Terminal terminal) throws IOException {
-        terminal.writer().println("You selected Option 1");
         terminal.flush();
         terminal.reader().read(); // Wait for any key press to return to the menu
     }
@@ -148,49 +147,35 @@ public class Main {
         terminal.reader().read(); // Wait for any key press to return to the menu
     }
 
-    public static void junk() {
-        try {
-
-            if (!configFile.exists()) {
-                log.info("Init config file...");
-                FileUtils.writeStringToFile(configFile, gson.toJson(AppConfig.InitConfig()), "UTF-8");
-            }
-
-            AppConfig appConfig = gson.fromJson(new FileReader(configFile), AppConfig.class);
-
-            StringBuilder strYtUrl = new StringBuilder("https://github.com/yt-dlp/yt-dlp/releases/download/");
-            String lastedTag = "";
-            Document document = Jsoup.connect(appConfig.getYt_git()).get();
-            Elements elements = document.getElementsByClass("Box-body");
-            for (int i = 0; i < elements.size(); i++) {
-                log.info("Checking for yt-dl update...");
-                lastedTag = elements.get(i).getElementsByTag("h1").text().replaceAll("[^\\d.]", "");
-                strYtUrl.append(lastedTag).append("/yt-dlp.exe");
-            }
-
-            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy.MM.dd");
-            Date lastedDate = dateFormat.parse(lastedTag);
-            Date lastedLocal = dateFormat.parse(appConfig.getYt_version());
-
-            if (lastedDate.after(lastedLocal)) {
-                log.info("Found new yt-dl version!!");
-//                System.out.println("Downloading yt-dl...");
-                FileUtils.copyURLToFile(new URL(strYtUrl.toString()), new File("./libs/yt-dlp.exe"));
-                appConfig.setYt_version(lastedTag);
+    private static void firstTimeConfig() {
+        if (!configFile.exists()) {
+            log.info("Init config file...");
+            try {
+                String dirUrl;
+                AppConfig appConfig = AppConfig.configTemplate();
+                while (true) {
+                    System.out.println("Choose working directory: ");
+                    dirUrl = scanner.nextLine();
+                    File dir = new File(dirUrl);
+                    if (!dir.exists() && !dir.isDirectory()) {
+                        log.error("Enter valid working directory!");
+                    } else {
+                        break;
+                    }
+                }
+                appConfig = ytdlUtil.downloadLastedVersion(appConfig);
+                appConfig.setWorking_directory(dirUrl);
                 FileUtils.writeStringToFile(configFile, gson.toJson(appConfig), "UTF-8");
-                log.info("Update yt-dl completed!");
+            } catch (IOException e) {
+                log.error(e);
             }
-
-
-        } catch (ParseException | IOException e) {
-            throw new RuntimeException(e);
         }
     }
 
     private static void printMenu(List<String> options, int selectedIndex) {
         for (int i = 0; i < options.size(); i++) {
             if (i == selectedIndex) {
-                System.out.println("> " + options.get(i));
+                System.out.println("\u001B[38;5;212m> \u001B[0m" + options.get(i));
             } else {
                 System.out.println("  " + options.get(i));
             }

@@ -1,4 +1,4 @@
-package Utils;
+package Model;
 
 import lombok.*;
 
@@ -12,23 +12,21 @@ public class AppConfig {
 
     private String yt_git;
 
-    private String yt_version;
+    private String yt_dl_url;
 
-    private String app_name;
+    private String yt_version;
 
     private String working_directory;
 
-    public static AppConfig InitConfig() {
+    public static AppConfig configTemplate() {
 
         AppConfig appConfig = AppConfig.builder()
                 .yt_git("https://github.com/yt-dlp/yt-dlp/releases/latest")
+                .yt_dl_url("https://github.com/yt-dlp/yt-dlp/releases/download/")
                 .yt_version("2003.6.1")
-                .app_name("test")
                 .working_directory("")
                 .build();
-
         return appConfig;
 
     }
-
 }
