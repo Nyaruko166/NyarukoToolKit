@@ -36,16 +36,99 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
 
-        firstTimeConfig();
-        log.info("Reading config...");
-        configLoaded = gson.fromJson(new FileReader(configFile), AppConfig.class);
+//        firstTimeConfig();
+//        log.info("Reading config...");
+//        configLoaded = gson.fromJson(new FileReader(configFile), AppConfig.class);
 
-        Terminal terminal = TerminalBuilder.builder()
-                .system(true)
-                .jansi(true)
-                .build();
+        Terminal terminal = TerminalBuilder.builder().system(true).jansi(true).build();
         terminal.enterRawMode();
-        menuConsole(terminal);
+//        menuConsole(terminal);
+        checkboxConsole(terminal);
+    }
+
+    private static void checkboxConsole(Terminal terminal) {
+        // Create a BindingReader to read input
+        BindingReader reader = new BindingReader(terminal.reader());
+
+        List<String> options = Arrays.asList("Option 1", "Option 2", "Option 3", "Option 4");
+        boolean[] selected = new boolean[options.size()]; // Track which options are checked
+        int selectedIndex = 0;
+
+        // Create a key map to bind keys to specific actions
+        KeyMap<String> keyMap = new KeyMap<>();
+        keyMap.bind("UP", "w");
+        keyMap.bind("DOWN", "s");
+        keyMap.bind("SPACE", " ");
+        keyMap.bind("ENTER", "e");
+
+        while (true) {
+
+            terminal.puts(org.jline.utils.InfoCmp.Capability.clear_screen);
+
+            TerminalHelper.printLn(terminal, Color.GREEN, "==> Up/Down with W/S");
+            TerminalHelper.printLn(terminal, Color.GREEN, "==> Quit/Confirm with Q/E");
+            TerminalHelper.printLn(terminal, Color.GREEN, "==> Choose with Spacebar");
+
+
+            terminal.writer().flush();
+
+            // Display the checkbox menu
+            try {
+                printCheckboxMenu(options, selected, selectedIndex, terminal);
+                // Read user input using BindingReader
+                String key = reader.readBinding(keyMap);
+
+                if (key == null) {
+                    continue; // Skip if no valid key pressed
+                }
+
+                switch (key) {
+                    case "UP":
+                        selectedIndex = (selectedIndex > 0) ? selectedIndex - 1 : options.size() - 1;
+                        break;
+                    case "DOWN":
+                        selectedIndex = (selectedIndex < options.size() - 1) ? selectedIndex + 1 : 0;
+                        break;
+                    case "SPACE":
+                        // Toggle the selected option
+                        selected[selectedIndex] = !selected[selectedIndex];
+                        break;
+                    case "ENTER":
+                        handleCheckboxSelection(selected, options, terminal);
+                        return;
+                    default:
+                        break;
+                }
+            } catch (RuntimeException | IOException e) {
+                log.error(e);
+            }
+        }
+    }
+
+    // Print the menu to the console, showing checkboxes
+    private static void printCheckboxMenu(List<String> options, boolean[] selected, int selectedIndex, Terminal terminal) throws IOException {
+        for (int i = 0; i < options.size(); i++) {
+            String checkbox = selected[i] ? "[x]" : "[ ]";  // Show checked or unchecked box
+            if (i == selectedIndex) {
+                terminal.writer().println("\u001B[38;5;212m> \u001B[0m" + checkbox + " " + options.get(i));  // Highlight the selected option
+            } else {
+                terminal.writer().println("  " + checkbox + " " + options.get(i));
+            }
+        }
+        terminal.flush();  // Ensure the menu is flushed and printed immediately
+    }
+
+    // Handle the final menu selection and output the selected checkboxes
+    private static void handleCheckboxSelection(boolean[] selected, List<String> options, Terminal terminal) throws IOException {
+
+        terminal.writer().println("\nSelected options:");
+        for (int i = 0; i < selected.length; i++) {
+            if (selected[i]) {
+                terminal.writer().println("- " + options.get(i));  // Print checked options
+            }
+        }
+        terminal.flush();  // Make sure to flush the output
+
     }
 
     // Method to handle the selected option
