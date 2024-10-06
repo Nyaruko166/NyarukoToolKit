@@ -1,11 +1,59 @@
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Scanner;
 
 public class Test {
 
+    static Gson gson = new Gson();
+
+    static final Logger log = LogManager.getLogger(Test.class);
+
     public static void main(String[] args) throws IOException, InterruptedException {
+
+        Scanner scanner = new Scanner(System.in);
+
+        String geminiKey = "Man i love fauna!";
+
+        String apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=";
+
+        String bodyTemplate = "{\"contents\":[{\"parts\":[{\"text\":\"%s\"}]}]}";
+        log.info("Enter your question: ");
+        String question = scanner.nextLine();
+        String body = String.format(bodyTemplate, question);
+
+        CloseableHttpClient client = HttpClients.createDefault();
+        HttpPost post = new HttpPost(apiUrl + geminiKey);
+
+        post.addHeader("Content-Type", "application/json");
+        post.setEntity(new StringEntity(body, ContentType.APPLICATION_JSON));
+
+        JsonObject resultObject = new JsonObject();
+        try {
+            CloseableHttpResponse res = client.execute(post);
+            BufferedReader rd = new BufferedReader(new InputStreamReader(res.getEntity().getContent()));
+            Gson gson = new Gson();
+            resultObject = gson.fromJson(rd, JsonObject.class);
+            String answer = resultObject.get("candidates").getAsJsonArray().get(0).getAsJsonObject().get("content").getAsJsonObject().get("parts").getAsJsonArray().get(0).getAsJsonObject().get("text").toString();
+            log.info("Result for " + question + " is " + answer);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 
         //        System.out.print("Enter yt link: ");
 //                    String ytUrl = in.nextLine();
