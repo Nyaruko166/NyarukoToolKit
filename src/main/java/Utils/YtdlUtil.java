@@ -10,22 +10,24 @@ import org.jsoup.select.Elements;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class YtdlUtil {
 
-    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy.MM.dd");
+    static SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy.MM.dd");
 
-    Logger log = LogManager.getLogger(YtdlUtil.class);
+    static Logger log = LogManager.getLogger(YtdlUtil.class);
 
-    public String fetchLastedYtdl(AppConfig appConfig) {
+    public static String fetchLastedYtdl(AppConfig appConfig) {
 
         try {
-            log.info("Getting lasted version info...");
+            log.info("Getting latest version info...");
             Document document = Jsoup.connect(appConfig.getYt_git()).get();
             Elements elements = document.getElementsByClass("Box-body");
             for (int i = 0; i < elements.size(); i++) {
@@ -38,7 +40,7 @@ public class YtdlUtil {
         return null;
     }
 
-    public AppConfig downloadLastedVersion(AppConfig appConfig) {
+    public static AppConfig downloadLastedVersion(AppConfig appConfig) {
         StringBuilder downloadUrl = new StringBuilder(appConfig.getYt_dl_url());
         String lastedTag = fetchLastedYtdl(appConfig);
 
@@ -60,4 +62,33 @@ public class YtdlUtil {
         return null;
     }
 
+    public static String fetchTitle(String downloadUrl) {
+
+        if (ytUrlValidate(downloadUrl)) {
+            try {
+                log.info("Getting information...");
+                Document document = Jsoup.connect(downloadUrl).get();
+                return document.title().replaceAll(" - YouTube$", "");
+            } catch (IOException e) {
+                log.error(e);
+            }
+        }
+
+        return null;
+
+    }
+
+    public static void downloadVideo(List<String> selectedOptions) {
+
+    }
+
+    private static Boolean ytUrlValidate(String downloadUrl) {
+
+        String regex = "^https?://(?:www\\.)?(?:youtube\\.com/watch\\?v=|youtu\\.be/)([\\w-]{11})(?:&[\\w-]+=[\\w-]+)*$";
+        Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
+
+        Matcher matcher = pattern.matcher(downloadUrl);
+        return matcher.matches();
+
+    }
 }
