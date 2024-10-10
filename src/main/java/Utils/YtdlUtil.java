@@ -15,6 +15,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.StringJoiner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -78,14 +79,31 @@ public class YtdlUtil {
 
     }
 
-    public static void downloadVideo(List<String> selectedOptions) {
+    public static Boolean downloadVideo(String downloadUrl, String path) {
 
+        String command = "cmd /c start cmd.exe /K \"cd ./libs/ && %s && exit\"";
+
+        StringJoiner customArgs = new StringJoiner(" ");
+        customArgs.add("yt-dlp.exe").add("-P \"%s\"".formatted(path)).add("""
+                -o "%(title)s.%(ext)s" -f "bv+ba/b" -S "ext" --write-subs --sub-langs "all, -live_chat"\s
+                --sub-format "best" --write-thumbnail""").add(downloadUrl);
+
+        try {
+            log.info("Downloading video...");
+            log.info("Check other tab for more information...");
+            Process process = Runtime.getRuntime().exec(command.formatted(customArgs.toString()));
+            return true;
+        } catch (Exception e) {
+            log.error(e);
+        }
+
+        return false;
     }
 
     private static Boolean ytUrlValidate(String downloadUrl) {
 
-        String regex = "^https?://(?:www\\.)?(?:youtube\\.com/watch\\?v=|youtu\\.be/)([\\w-]{11})(?:&[\\w-]+=[\\w-]+)*$";
-        Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
+        String regex = "(?:https?://)?(?:www\\.)?(?:youtube\\.com/watch\\?v=|youtu\\.be/)([\\w-]{11})(?:[&?][\\w=%-]*)*";
+        Pattern pattern = Pattern.compile(regex);
 
         Matcher matcher = pattern.matcher(downloadUrl);
         return matcher.matches();

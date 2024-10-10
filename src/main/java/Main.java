@@ -8,6 +8,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jline.keymap.BindingReader;
 import org.jline.keymap.KeyMap;
+import org.jline.reader.LineReader;
+import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 import org.jline.utils.InfoCmp;
@@ -18,10 +20,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
 
 
 public class Main {
@@ -39,6 +38,10 @@ public class Main {
     static KeyMap<String> keyMap = new KeyMap<>();
 
     public static void main(String[] args) throws IOException {
+
+//        Map<String,String> ytdlArgs = new HashMap<>();
+//
+//        ytdlArgs.put();
 
         // Create a key map to bind keys to specific actions
         keyMap.bind("UP", "w");
@@ -64,8 +67,8 @@ public class Main {
     private static void checkForUpdate(Terminal terminal) throws IOException {
         if (YtdlUtil.downloadLastedVersion(loadedConfig) == null) {
             log.info("You're up to date!");
-            log.info("Press any key to continue...");
         }
+        log.info("Press any key to continue...");
         terminal.flush();
         terminal.reader().read(); // Wait for any key press to return to the menu
     }
@@ -79,8 +82,10 @@ public class Main {
             String videoUrl = scanner.nextLine();
             String title = YtdlUtil.fetchTitle(videoUrl);
             if (title != null) {
-                Files.createDirectories(Paths.get(loadedConfig.getWorking_directory() + "\\Videos\\" + title));
-                log.info("Folder at {}", loadedConfig.getWorking_directory() + "/Videos/" + title);
+                Path path = Paths.get(loadedConfig.getWorking_directory() + "\\Videos\\" + title);
+                Files.createDirectories(path);
+                log.info("Created folder at {}", path.toString());
+                YtdlUtil.downloadVideo(videoUrl, path.toString());
                 break;
             }
 
@@ -90,7 +95,6 @@ public class Main {
         }
 
         terminal.flush();
-        log.info("Done!!");
         log.info("Press any key to continue...");
         terminal.reader().read(); // Wait for any key press to return to the menu
     }
