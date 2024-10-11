@@ -1,4 +1,4 @@
-package Utils;
+package Util;
 
 import org.jline.terminal.Terminal;
 import org.jline.utils.AttributedString;

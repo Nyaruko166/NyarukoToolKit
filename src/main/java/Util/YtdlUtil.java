@@ -1,4 +1,4 @@
-package Utils;
+package Util;
 
 import Model.AppConfig;
 import org.apache.commons.io.FileUtils;
@@ -14,7 +14,6 @@ import java.net.URL;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.List;
 import java.util.StringJoiner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
