@@ -1,3 +1,4 @@
+import Connector.Nettruyen;
 import Model.AppConfig;
 import Util.Color;
 import Util.YtdlUtil;
@@ -56,7 +57,7 @@ public class Main {
         Terminal terminal = TerminalBuilder.builder().system(true).jansi(true).build();
 //        terminal.enterRawMode();
 
-        List<String> mainMenuOptions = Arrays.asList("Check for update", "Download video from youtube", "Option 3");
+        List<String> mainMenuOptions = Arrays.asList("Check for update", "Download video from youtube", "Download manga to PDF");
 
         menuConsole(terminal, mainMenuOptions);
 //        checkboxConsole(terminal);
@@ -68,7 +69,7 @@ public class Main {
         }
         log.info("Press any key to continue...");
         terminal.flush();
-        terminal.reader().read(); // Wait for any key press to return to the menu
+        terminal.reader().read();
     }
 
 
@@ -94,14 +95,31 @@ public class Main {
 
         terminal.flush();
         log.info("Press any key to continue...");
-        terminal.reader().read(); // Wait for any key press to return to the menu
+        terminal.reader().read();
     }
 
-    // Dummy method 3
-    private static void method3(Terminal terminal) throws IOException {
-        terminal.writer().println("You selected Option 3");
+    private static void mangaCrawler(Terminal terminal) throws IOException {
+        Nettruyen nettruyen = new Nettruyen();
+
+        loop:
+        while (true) {
+            log.debug("Right now we can only download manga from Nettruyen-likes website...");
+            log.info("Enter manga url: ");
+            String mangaUrl = scanner.nextLine();
+            switch (nettruyen.downloadManga(loadedConfig.getWorking_directory(), mangaUrl)) {
+                case SUCCESS -> {
+                    break loop;
+                }
+                case NOT_FOUND -> {
+                    terminal.puts(InfoCmp.Capability.clear_screen);
+                    log.error("Manga not found!");
+                }
+            }
+        }
+
         terminal.flush();
-        terminal.reader().read(); // Wait for any key press to return to the menu
+        log.info("Press any key to continue...");
+        terminal.reader().read();
     }
 
     // Method to handle the selected option
@@ -113,8 +131,8 @@ public class Main {
             case "Download video from youtube":
                 downloadYT(terminal);
                 break;
-            case "Option 3":
-                method3(terminal);
+            case "Download manga to PDF":
+                mangaCrawler(terminal);
                 break;
             case "QUIT":
                 terminal.writer().println("Goodbye!");
@@ -262,6 +280,10 @@ public class Main {
                     appConfig = appConfigTemp;
                 }
                 appConfig.setWorking_directory(dirUrl);
+                File mangaDir = new File(dirUrl + "/Mangas");
+                if (!mangaDir.exists()) {
+                    mangaDir.mkdir();
+                }
                 FileUtils.writeStringToFile(configFile, gson.toJson(appConfig), "UTF-8");
             } catch (IOException e) {
                 log.error(e);

@@ -1,6 +1,7 @@
 package Connector;
 
 import Model.Chapter;
+import Util.StatusCode;
 import com.lowagie.text.Image;
 import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.PdfWriter;
@@ -27,19 +28,18 @@ public class Nettruyen {
 
     static final Logger log = LogManager.getLogger(Nettruyen.class);
 
-    public static void main(String[] args) {
-        Path mangaDir = Paths.get("./Mangas/");
-
-        if (!mangaDir.toFile().exists()) {
-            mangaDir.toFile().mkdir();
-        }
+    public StatusCode downloadManga(String workingDir, String url) {
+        Path mangaDir = Paths.get(workingDir + "/Mangas/");
 
         Path mangaDownloadPath = null;
 
         log.info("Getting information...");
         try {
-            Document document = Jsoup.connect("https://nettruyenviet.com/truyen-tranh/doc-thoai-cua-nguoi-duoc-si").get();
+            Document document = Jsoup.connect(url).get();
             String title = document.select("h1.title-detail").text();
+            if (title.isBlank()) {
+                return StatusCode.NOT_FOUND;
+            }
             mangaDownloadPath = Paths.get(mangaDir + File.separator + title);
             log.info("Fetching manga: {}", title);
             if (!mangaDownloadPath.toFile().exists()) {
@@ -52,32 +52,41 @@ public class Nettruyen {
             log.info("Fetching chapters...");
             for (Element element : elements) {
                 lstChapter.add(new Chapter(element.text(), element.attr("href")));
-//            log.info(element.text());
             }
 
             for (Chapter chapter : lstChapter) {
                 log.info("Getting {} data...", chapter.getTitle());
                 Document readingBox = Jsoup.connect(chapter.getSrc()).get();
                 Elements readingDetail = readingBox.select("div.page-chapter > img");
+                //Create folder to store chapter image
                 Path chapterPath = Paths.get(mangaDownloadPath.toAbsolutePath() + File.separator + chapter.getTitle());
                 chapterPath.toFile().mkdir();
 
                 log.info("Downloading {} images...", chapter.getTitle());
                 for (Element imgDetail : readingDetail) {
                     String imgSrc = imgDetail.attr("data-src");
-                    Path imgPath = Paths.get(chapterPath.toAbsolutePath()
-                                             + File.separator + imgSrc.substring(imgSrc.lastIndexOf('/') + 1));
-                    FileUtils.copyURLToFile(new URL(imgDetail.attr("data-src")), imgPath.toFile());
+                    //Create path to download chapter image
+                    Path imgPath = Paths.get(chapterPath.toAbsolutePath() + File.separator
+                                             + imgSrc.substring(imgSrc.lastIndexOf('/') + 1));
+                    try {
+                        FileUtils.copyURLToFile(new URL(imgDetail.attr("data-src")), imgPath.toFile());
+                    } catch (IOException e) {
+                        log.error("Error when download the img {}", imgDetail.attr("data-src"));
+                        log.error(e);
+                    }
                 }
-                log.info("Downloaded manga: {}", title);
             }
+            log.info("Downloaded manga: {}", title);
         } catch (IOException e) {
             log.error(e);
         }
+        convertToPDF(mangaDownloadPath.toString());
+        return StatusCode.SUCCESS;
+    }
 
-        //PDF
-        String rootFolderPath = "C:/Users/ADMIN/Documents/Code/SideProject/NyarukoToolKit/Mangas/Độc Thoại Của Người Dược Sĩ";
-        String outputFolderPath = mangaDir + File.separator + "PDF Files";
+    private void convertToPDF(String rootFolderPath) {
+
+        String outputFolderPath = rootFolderPath + "/PDF";
 
         Path outputPath = Paths.get(outputFolderPath);
         if (!outputPath.toFile().exists()) {
@@ -85,38 +94,37 @@ public class Nettruyen {
         }
 
         log.info("Creating PDF...");
-        File rootFolder = new java.io.File(rootFolderPath);
-        File[] chapterFolders = rootFolder.listFiles(java.io.File::isDirectory);
+        File rootFolder = new File(rootFolderPath);
+        File[] chapterFolders = rootFolder.listFiles(File::isDirectory);
 
         if (chapterFolders != null) {
-            for (java.io.File chapterFolder : chapterFolders) {
+            for (File chapterFolder : chapterFolders) {
                 String chapterName = chapterFolder.getName();
-                String outputPdfPath = outputFolderPath + java.io.File.separator + chapterName + ".pdf";
+                String outputPdfPath = outputFolderPath + File.separator + chapterName + ".pdf";
 
                 try (FileOutputStream fos = new FileOutputStream(outputPdfPath)) {
-                    com.lowagie.text.Document document = new com.lowagie.text.Document();
-                    PdfWriter.getInstance(document, fos);
-                    document.open();
+                    com.lowagie.text.Document pdDocument = new com.lowagie.text.Document();
+                    PdfWriter.getInstance(pdDocument, fos);
+                    pdDocument.open();
 
-                    File[] imageFiles = chapterFolder.listFiles((dir, name) ->
-                            name.toLowerCase().matches(".*\\.(jpg|jpeg|png|bmp|gif)$"));
+                    File[] imageFiles = chapterFolder.listFiles((dir, name) -> name.toLowerCase().matches(".*\\.(jpg|jpeg|png|bmp|gif)$"));
 
                     if (imageFiles != null && imageFiles.length > 0) {
                         // Sort image files numerically within each chapter folder
                         Arrays.sort(imageFiles, Comparator.comparingInt(f -> extractNumber(f.getName())));
 
-                        for (java.io.File imageFile : imageFiles) {
+                        for (File imageFile : imageFiles) {
                             Image image = Image.getInstance(imageFile.getAbsolutePath());
 
                             // Set the page size to match the image size
                             Rectangle pageSize = new Rectangle(image.getWidth(), image.getHeight());
-                            document.setPageSize(pageSize);
-                            document.newPage();
+                            pdDocument.setPageSize(pageSize);
+                            pdDocument.newPage();
 
-                            image.setAbsolutePosition(0, 0); // Position the image at the bottom-left corner of the page
-                            document.add(image);
+                            image.setAbsolutePosition(0, 0);
+                            pdDocument.add(image);
                         }
-                        document.close();
+                        pdDocument.close();
                         log.info("PDF created for {} successfully!", chapterName);
                     } else {
                         log.info("No image files found in {}", chapterName);
