@@ -2,9 +2,11 @@ package Connector;
 
 import Model.Chapter;
 import Util.StatusCode;
+import com.lowagie.text.DocumentException;
 import com.lowagie.text.Image;
 import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.PdfWriter;
+import com.sun.tools.javac.Main;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -13,45 +15,62 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import java.awt.*;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
+import java.util.*;
 import java.util.List;
 
 public class Nettruyen {
 
     static final Logger log = LogManager.getLogger(Nettruyen.class);
 
-    public StatusCode downloadManga(String workingDir, String url) {
+    public String getMangaTitle(String url) {
+        String title = null;
+        try {
+            Document document = Jsoup.connect(url).get();
+            title = document.select("h1.title-detail").text();
+            if (title.isBlank()) {
+                return null;
+            }
+        } catch (IOException e) {
+            log.error(e);
+        }
+        return title;
+    }
+
+    public List<Chapter> getChapterList(String url) {
+        List<Chapter> lstChapter = new ArrayList<>();
+        try {
+            Document document = Jsoup.connect(url).get();
+            Elements elements = document.select("ul#asc div.chapter > a");
+            log.info("Fetching chapters...");
+            for (Element element : elements) {
+                lstChapter.add(new Chapter(element.text(), element.attr("href")));
+            }
+        } catch (IOException e) {
+            log.error(e);
+        }
+        return lstChapter;
+    }
+
+    public void downloadManga(String workingDir, String title, List<Chapter> lstChapter) {
+
         Path mangaDir = Paths.get(workingDir + "/Mangas/");
 
         Path mangaDownloadPath = null;
 
         log.info("Getting information...");
         try {
-            Document document = Jsoup.connect(url).get();
-            String title = document.select("h1.title-detail").text();
-            if (title.isBlank()) {
-                return StatusCode.NOT_FOUND;
-            }
             mangaDownloadPath = Paths.get(mangaDir + File.separator + title);
             log.info("Fetching manga: {}", title);
             if (!mangaDownloadPath.toFile().exists()) {
                 mangaDownloadPath.toFile().mkdir();
                 log.info("Created folder at: {}", mangaDownloadPath.toString());
-            }
-
-            org.jsoup.select.Elements elements = document.select("ul#asc div.chapter > a");
-            List<Chapter> lstChapter = new ArrayList<>();
-            log.info("Fetching chapters...");
-            for (Element element : elements) {
-                lstChapter.add(new Chapter(element.text(), element.attr("href")));
             }
 
             for (Chapter chapter : lstChapter) {
@@ -66,8 +85,7 @@ public class Nettruyen {
                 for (Element imgDetail : readingDetail) {
                     String imgSrc = imgDetail.attr("data-src");
                     //Create path to download chapter image
-                    Path imgPath = Paths.get(chapterPath.toAbsolutePath() + File.separator
-                                             + imgSrc.substring(imgSrc.lastIndexOf('/') + 1));
+                    Path imgPath = Paths.get(chapterPath.toAbsolutePath() + File.separator + imgSrc.substring(imgSrc.lastIndexOf('/') + 1));
                     try {
                         FileUtils.copyURLToFile(new URL(imgDetail.attr("data-src")), imgPath.toFile());
                     } catch (IOException e) {
@@ -81,7 +99,6 @@ public class Nettruyen {
             log.error(e);
         }
         convertToPDF(mangaDownloadPath.toString());
-        return StatusCode.SUCCESS;
     }
 
     private void convertToPDF(String rootFolderPath) {
@@ -100,6 +117,9 @@ public class Nettruyen {
         if (chapterFolders != null) {
             for (File chapterFolder : chapterFolders) {
                 String chapterName = chapterFolder.getName();
+                if (chapterName.equalsIgnoreCase("pdf")) {
+                    continue;
+                }
                 String outputPdfPath = outputFolderPath + File.separator + chapterName + ".pdf";
 
                 try (FileOutputStream fos = new FileOutputStream(outputPdfPath)) {
@@ -129,7 +149,7 @@ public class Nettruyen {
                     } else {
                         log.info("No image files found in {}", chapterName);
                     }
-                } catch (IOException | com.lowagie.text.DocumentException e) {
+                } catch (IOException | DocumentException e) {
                     log.error("Error creating PDF for {}: {}", chapterName, e.getMessage());
                 }
             }

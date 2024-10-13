@@ -1,5 +1,6 @@
 import Connector.Nettruyen;
 import Model.AppConfig;
+import Model.Chapter;
 import Util.Color;
 import Util.YtdlUtil;
 import Util.TerminalHelper;
@@ -100,22 +101,37 @@ public class Main {
 
     private static void mangaCrawler(Terminal terminal) throws IOException {
         Nettruyen nettruyen = new Nettruyen();
-
-        loop:
-        while (true) {
+        String title;
+        String mangaUrl;
+        do {
             log.debug("Right now we can only download manga from Nettruyen-likes website...");
             log.info("Enter manga url: ");
-            String mangaUrl = scanner.nextLine();
-            switch (nettruyen.downloadManga(loadedConfig.getWorking_directory(), mangaUrl)) {
-                case SUCCESS -> {
-                    break loop;
-                }
-                case NOT_FOUND -> {
-                    terminal.puts(InfoCmp.Capability.clear_screen);
-                    log.error("Manga not found!");
+            mangaUrl = scanner.nextLine();
+            title = nettruyen.getMangaTitle(mangaUrl);
+        } while (title == null);
+
+        List<Chapter> lstChapter = nettruyen.getChapterList(mangaUrl);
+
+        List<String> options = new ArrayList<>();
+        for (Chapter x : lstChapter) {
+            options.add(x.getTitle());
+        }
+
+        List<String> selectedOptions = checkboxConsole(terminal, options);
+        List<Chapter> selectedChapters = new ArrayList<>();
+        for (String x : selectedOptions) {
+            for (Chapter y : lstChapter) {
+                if (x.equalsIgnoreCase(y.getTitle())) {
+                    selectedChapters.add(y);
                 }
             }
         }
+
+        for (Chapter x : selectedChapters) {
+            log.info(x.getTitle());
+        }
+
+//        nettruyen.downloadManga(loadedConfig.getWorking_directory(), title, lstChapter);
 
         terminal.flush();
         log.info("Press any key to continue...");
@@ -190,11 +206,10 @@ public class Main {
         }
     }
 
-    private static void checkboxConsole(Terminal terminal) {
+    private static List<String> checkboxConsole(Terminal terminal, List<String> options) {
         // Create a BindingReader to read input
         BindingReader reader = new BindingReader(terminal.reader());
 
-        List<String> options = Arrays.asList("Option 1", "Option 2", "Option 3", "Option 4");
         boolean[] selected = new boolean[options.size()]; // Track which options are checked
         int selectedIndex = 0;
 
@@ -231,8 +246,8 @@ public class Main {
                         selected[selectedIndex] = !selected[selectedIndex];
                         break;
                     case "ENTER":
-                        handleCheckboxSelection(selected, options, terminal);
-                        return;
+                        List<String> selectedOptions = handleCheckboxSelection(selected, options);
+                        return selectedOptions;
                     default:
                         break;
                 }
@@ -243,19 +258,20 @@ public class Main {
     }
 
     // Handle the final menu selection and output the selected checkboxes
-    private static void handleCheckboxSelection(boolean[] selected, List<String> options, Terminal terminal) throws IOException {
+    private static List<String> handleCheckboxSelection(boolean[] selected, List<String> options) throws IOException {
 
         List<String> selectedOptions = new ArrayList<>();
 
         //Todo handle none options
 
-        terminal.writer().println("\nSelected options:");
+//        terminal.writer().println("\nSelected options:");
         for (int i = 0; i < selected.length; i++) {
             if (selected[i]) {
                 selectedOptions.add(options.get(i));
             }
         }
-        terminal.flush();  // Make sure to flush the output
+
+        return selectedOptions;
 
     }
 
