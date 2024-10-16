@@ -7,11 +7,14 @@ import lombok.*;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@ToString
 public class Chapter {
 
     private String title;
 
     private String src;
 
+    @Override
+    public String toString() {
+        return title;
+    }
 }

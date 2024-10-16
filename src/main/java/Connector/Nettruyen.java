@@ -1,12 +1,11 @@
 package Connector;
 
 import Model.Chapter;
-import Util.StatusCode;
+import Util.Config;
 import com.lowagie.text.DocumentException;
 import com.lowagie.text.Image;
 import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.PdfWriter;
-import com.sun.tools.javac.Main;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -15,7 +14,6 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import java.awt.*;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -23,13 +21,13 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.List;
 
 public class Nettruyen {
 
     static final Logger log = LogManager.getLogger(Nettruyen.class);
 
     public String getMangaTitle(String url) {
+        log.info("Getting information...");
         String title = null;
         try {
             Document document = Jsoup.connect(url).get();
@@ -58,46 +56,34 @@ public class Nettruyen {
         return lstChapter;
     }
 
-    public void downloadManga(String workingDir, String title, List<Chapter> lstChapter) {
+    public void downloadManga(String title, List<Chapter> lstChapter) {
 
-        Path mangaDir = Paths.get(workingDir + "/Mangas/");
+        Path mangaDir = Paths.get(Config.getInstance().getProperty().getWorking_directory() + "/Mangas/");
 
         Path mangaDownloadPath = null;
 
-        log.info("Getting information...");
-        try {
-            mangaDownloadPath = Paths.get(mangaDir + File.separator + title);
-            log.info("Fetching manga: {}", title);
-            if (!mangaDownloadPath.toFile().exists()) {
-                mangaDownloadPath.toFile().mkdir();
-                log.info("Created folder at: {}", mangaDownloadPath.toString());
-            }
-
-            for (Chapter chapter : lstChapter) {
-                log.info("Getting {} data...", chapter.getTitle());
-                Document readingBox = Jsoup.connect(chapter.getSrc()).get();
-                Elements readingDetail = readingBox.select("div.page-chapter > img");
-                //Create folder to store chapter image
-                Path chapterPath = Paths.get(mangaDownloadPath.toAbsolutePath() + File.separator + chapter.getTitle());
-                chapterPath.toFile().mkdir();
-
-                log.info("Downloading {} images...", chapter.getTitle());
-                for (Element imgDetail : readingDetail) {
-                    String imgSrc = imgDetail.attr("data-src");
-                    //Create path to download chapter image
-                    Path imgPath = Paths.get(chapterPath.toAbsolutePath() + File.separator + imgSrc.substring(imgSrc.lastIndexOf('/') + 1));
-                    try {
-                        FileUtils.copyURLToFile(new URL(imgDetail.attr("data-src")), imgPath.toFile());
-                    } catch (IOException e) {
-                        log.error("Error when download the img {}", imgDetail.attr("data-src"));
-                        log.error(e);
-                    }
-                }
-            }
-            log.info("Downloaded manga: {}", title);
-        } catch (IOException e) {
-            log.error(e);
+//        log.info("Getting information...");
+        mangaDownloadPath = Paths.get(mangaDir + File.separator + title);
+        log.info("Fetching manga: {}", title);
+        if (!mangaDownloadPath.toFile().exists()) {
+            mangaDownloadPath.toFile().mkdir();
+            log.info("Created folder at: {}", mangaDownloadPath.toString());
         }
+
+        for (Chapter chapter : lstChapter) {
+            //Create folder to store chapter image
+            Path chapterPath = Paths.get(mangaDownloadPath.toAbsolutePath() + File.separator + chapter.getTitle());
+            chapterPath.toFile().mkdir();
+
+            downloadChapter(chapter, chapterPath);
+
+            if (isFolderEmpty(chapterPath.toString())) {
+                log.error("Failed to download {} ?!", chapter.getTitle());
+                log.warn("Retry to download...");
+                downloadChapter(chapter, chapterPath);
+            }
+        }
+        log.info("Downloaded manga: {}", title);
         convertToPDF(mangaDownloadPath.toString());
     }
 
@@ -127,7 +113,8 @@ public class Nettruyen {
                     PdfWriter.getInstance(pdDocument, fos);
                     pdDocument.open();
 
-                    File[] imageFiles = chapterFolder.listFiles((dir, name) -> name.toLowerCase().matches(".*\\.(jpg|jpeg|png|bmp|gif)$"));
+                    File[] imageFiles = chapterFolder.listFiles((dir, name) -> name.toLowerCase()
+                            .matches(".*\\.(jpg|jpeg|png|bmp|gif)$"));
 
                     if (imageFiles != null && imageFiles.length > 0) {
                         // Sort image files numerically within each chapter folder
@@ -158,6 +145,29 @@ public class Nettruyen {
         }
     }
 
+    private void downloadChapter(Chapter chapter, Path chapterPath) {
+        log.info("Getting {} data...", chapter.getTitle());
+        try {
+            Document readingBox = Jsoup.connect(chapter.getSrc()).get();
+            Elements readingDetail = readingBox.select("div.page-chapter > img");
+
+            log.info("Downloading {} images...", chapter.getTitle());
+            for (Element imgDetail : readingDetail) {
+                String imgSrc = imgDetail.attr("data-src");
+                //Create path to download chapter image
+                Path imgPath = Paths.get(chapterPath.toAbsolutePath() + File.separator + imgSrc.substring(imgSrc.lastIndexOf('/') + 1));
+                try {
+                    FileUtils.copyURLToFile(new URL(imgDetail.attr("data-src")), imgPath.toFile());
+                } catch (IOException e) {
+                    log.error("Error when download the img {}", imgDetail.attr("data-src"));
+                    log.error(e);
+                }
+            }
+        } catch (IOException e) {
+            log.error(e);
+        }
+    }
+
     // Extract digits from the file name to help with numerical sorting
     private static int extractNumber(String name) {
         try {
@@ -165,6 +175,17 @@ public class Nettruyen {
             return Integer.parseInt(number);
         } catch (NumberFormatException e) {
             return 0; // Return 0 if no number is found
+        }
+    }
+
+    public static boolean isFolderEmpty(String folderPath) {
+        File folder = new File(folderPath);
+        if (folder.isDirectory()) {
+            // Check if the directory has any files or subdirectories
+            return Objects.requireNonNull(folder.list()).length == 0;
+        } else {
+            log.error("The specified path is not a directory.");
+            return false;
         }
     }
 }

@@ -20,8 +20,6 @@ import java.util.regex.Pattern;
 
 public class YtdlUtil {
 
-    static SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy.MM.dd");
-
     static Logger log = LogManager.getLogger(YtdlUtil.class);
 
     public static String fetchLastedYtdl(AppConfig appConfig) {
@@ -43,7 +41,7 @@ public class YtdlUtil {
     public static AppConfig downloadLastedVersion(AppConfig appConfig) {
         StringBuilder downloadUrl = new StringBuilder(appConfig.getYt_dl_url());
         String lastedTag = fetchLastedYtdl(appConfig);
-
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy.MM.dd");
         try {
             Date lastedDate = dateFormat.parse(lastedTag);
             Date lastedLocal = dateFormat.parse(appConfig.getYt_version());

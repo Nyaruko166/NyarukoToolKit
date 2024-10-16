@@ -2,8 +2,8 @@ import Connector.Nettruyen;
 import Model.AppConfig;
 import Model.Chapter;
 import Util.Color;
-import Util.YtdlUtil;
 import Util.TerminalHelper;
+import Util.YtdlUtil;
 import com.google.gson.Gson;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
@@ -20,7 +20,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Scanner;
 
 
 public class Main {
@@ -37,17 +40,16 @@ public class Main {
 
     static KeyMap<String> keyMap = new KeyMap<>();
 
+    private static final int PAGE_SIZE = 10;
+
     public static void main(String[] args) throws IOException {
-
-//        Map<String,String> ytdlArgs = new HashMap<>();
-//
-//        ytdlArgs.put();
-
         // Create a key map to bind keys to specific actions
         keyMap.bind("UP", "w");
         keyMap.bind("DOWN", "s");
         keyMap.bind("SPACE", " ");
         keyMap.bind("ENTER", "e");
+        keyMap.bind("NEXT", "d");
+        keyMap.bind("PREVIOUS", "a");
         //Todo: Check box still not have quit and back yet
         keyMap.bind("QUIT", "q");
 
@@ -57,10 +59,7 @@ public class Main {
 
         Terminal terminal = TerminalBuilder.builder().system(true).jansi(true).build();
 //        terminal.enterRawMode();
-
-        List<String> mainMenuOptions = Arrays.asList("Check for update", "Download video from youtube", "Download manga to PDF");
-
-        menuConsole(terminal, mainMenuOptions);
+        menuConsole(terminal);
 //        checkboxConsole(terminal);
     }
 
@@ -112,26 +111,20 @@ public class Main {
 
         List<Chapter> lstChapter = nettruyen.getChapterList(mangaUrl);
 
-        List<String> options = new ArrayList<>();
-        for (Chapter x : lstChapter) {
-            options.add(x.getTitle());
-        }
+        List<Chapter> selectedChapters = checkboxConsole(terminal, lstChapter);
 
-        List<String> selectedOptions = checkboxConsole(terminal, options);
-        List<Chapter> selectedChapters = new ArrayList<>();
-        for (String x : selectedOptions) {
-            for (Chapter y : lstChapter) {
-                if (x.equalsIgnoreCase(y.getTitle())) {
-                    selectedChapters.add(y);
-                }
-            }
-        }
+        log.info("{} chapters selected.", selectedChapters.size());
 
         for (Chapter x : selectedChapters) {
             log.info(x.getTitle());
         }
 
-//        nettruyen.downloadManga(loadedConfig.getWorking_directory(), title, lstChapter);
+        //Choose none = download all
+        if (selectedChapters.isEmpty()) {
+            nettruyen.downloadManga(title, lstChapter);
+        } else {
+            nettruyen.downloadManga(title, selectedChapters);
+        }
 
         terminal.flush();
         log.info("Press any key to continue...");
@@ -159,7 +152,9 @@ public class Main {
         }
     }
 
-    private static void menuConsole(Terminal terminal, List<String> options) {
+    private static void menuConsole(Terminal terminal) {
+
+        List<String> options = Arrays.asList("Check for update", "Download video from youtube", "Download manga to PDF");
 
         try {
             BindingReader bindingReader = new BindingReader(terminal.reader());
@@ -206,73 +201,93 @@ public class Main {
         }
     }
 
-    private static List<String> checkboxConsole(Terminal terminal, List<String> options) {
-        // Create a BindingReader to read input
+    public static <T> List<T> checkboxConsole(Terminal terminal, List<T> options) {
         BindingReader reader = new BindingReader(terminal.reader());
-
         boolean[] selected = new boolean[options.size()]; // Track which options are checked
+        int totalPages = (int) Math.ceil((double) options.size() / PAGE_SIZE);
         int selectedIndex = 0;
+        int currentPage = 0;
 
         while (true) {
+            terminal.puts(InfoCmp.Capability.clear_screen);
 
-            terminal.puts(org.jline.utils.InfoCmp.Capability.clear_screen);
-
-            TerminalHelper.printLn(terminal, Color.GREEN, "==> Up/Down with W/S");
+            // Display instructions
+            TerminalHelper.printLn(terminal, Color.GREEN, "==> Navigate with W/S");
+            TerminalHelper.printLn(terminal, Color.GREEN, "==> Toggle selection with Spacebar");
+            TerminalHelper.printLn(terminal, Color.GREEN, "==> Next Page/Previous Page with D/A");
             TerminalHelper.printLn(terminal, Color.GREEN, "==> Quit/Confirm with Q/E");
-            TerminalHelper.printLn(terminal, Color.GREEN, "==> Choose with Spacebar");
-
+            TerminalHelper.printLn(terminal, Color.BLUE, "If you don't select anything, the script will download all the chapters.");
+            TerminalHelper.printLn(terminal, Color.CYAN, "------------------------------------------------------------------------");
 
             terminal.writer().flush();
 
-            // Display the checkbox menu
+            // Calculate the start and end indexes for the current page
+            int startIndex = currentPage * PAGE_SIZE;
+            int endIndex = Math.min(startIndex + PAGE_SIZE, options.size());
+
+            // Display the checkbox menu for the current page
             try {
-                printCheckboxMenu(options, selected, selectedIndex, terminal);
-                // Read user input using BindingReader
+                List<String> optionsString = options.stream().map(Object::toString).toList();
+                printCheckboxMenu(optionsString, selected, selectedIndex, terminal, startIndex, endIndex);
+                TerminalHelper.printLn(terminal, Color.CYAN, String.format("Page %d of %d", currentPage + 1, totalPages));
                 String key = reader.readBinding(keyMap);
 
                 if (key == null) {
-                    continue; // Skip if no valid key pressed
+                    continue;
                 }
 
                 switch (key) {
                     case "UP":
-                        selectedIndex = (selectedIndex > 0) ? selectedIndex - 1 : options.size() - 1;
+                        selectedIndex = (selectedIndex > startIndex) ? selectedIndex - 1 : endIndex - 1;
                         break;
                     case "DOWN":
-                        selectedIndex = (selectedIndex < options.size() - 1) ? selectedIndex + 1 : 0;
+                        selectedIndex = (selectedIndex < endIndex - 1) ? selectedIndex + 1 : startIndex;
+                        break;
+                    case "NEXT":
+                        if (endIndex < options.size()) {
+                            currentPage++;
+                            selectedIndex = currentPage * PAGE_SIZE;
+                        }
+                        break;
+                    case "PREVIOUS":
+                        if (currentPage > 0) {
+                            currentPage--;
+                            selectedIndex = currentPage * PAGE_SIZE;
+                        }
                         break;
                     case "SPACE":
-                        // Toggle the selected option
                         selected[selectedIndex] = !selected[selectedIndex];
                         break;
+                    case "QUIT":
                     case "ENTER":
-                        List<String> selectedOptions = handleCheckboxSelection(selected, options);
-                        return selectedOptions;
+                        return handleCheckboxSelection(selected, options);
                     default:
                         break;
                 }
             } catch (RuntimeException | IOException e) {
-                log.error(e);
+                e.printStackTrace();
             }
         }
     }
 
-    // Handle the final menu selection and output the selected checkboxes
-    private static List<String> handleCheckboxSelection(boolean[] selected, List<String> options) throws IOException {
+    private static void printCheckboxMenu(List<String> options, boolean[] selected, int selectedIndex,
+                                          Terminal terminal, int startIndex, int endIndex) throws IOException {
+        for (int i = startIndex; i < endIndex; i++) {
+            String checkboxMarker = selected[i] ? "[x] " : "[ ] ";
+            String selectionMarker = (i == selectedIndex) ? "-> " : "   ";
+            TerminalHelper.printLn(terminal, Color.YELLOW, selectionMarker + checkboxMarker + options.get(i));
+        }
+        terminal.flush();
+    }
 
-        List<String> selectedOptions = new ArrayList<>();
-
-        //Todo handle none options
-
-//        terminal.writer().println("\nSelected options:");
+    private static <T> List<T> handleCheckboxSelection(boolean[] selected, List<T> options) {
+        List<T> selectedOptions = new ArrayList<>();
         for (int i = 0; i < selected.length; i++) {
             if (selected[i]) {
                 selectedOptions.add(options.get(i));
             }
         }
-
         return selectedOptions;
-
     }
 
     private static void firstTimeConfig() {
@@ -316,18 +331,4 @@ public class Main {
             }
         }
     }
-
-    // Print the menu to the console, showing checkboxes
-    private static void printCheckboxMenu(List<String> options, boolean[] selected, int selectedIndex, Terminal terminal) throws IOException {
-        for (int i = 0; i < options.size(); i++) {
-            String checkbox = selected[i] ? "[x]" : "[ ]";  // Show checked or unchecked box
-            if (i == selectedIndex) {
-                terminal.writer().println("\u001B[38;5;212m> \u001B[0m" + checkbox + " " + options.get(i));  // Highlight the selected option
-            } else {
-                terminal.writer().println("  " + checkbox + " " + options.get(i));
-            }
-        }
-        terminal.flush();  // Ensure the menu is flushed and printed immediately
-    }
-
 }
