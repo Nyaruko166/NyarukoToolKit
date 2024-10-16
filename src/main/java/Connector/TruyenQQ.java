@@ -13,40 +13,25 @@ import org.jsoup.select.Elements;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
-public class Nettruyen {
+public class TruyenQQ {
 
-    Logger log = LogManager.getLogger(Nettruyen.class);
+    static Logger log = LogManager.getLogger(TruyenQQ.class);
 
-    public String getMangaTitle(String url) {
-        log.info("Getting information...");
-        String title = null;
-        try {
-            Document document = Jsoup.connect(url).get();
-            title = document.select("h1.title-detail").text();
-            if (title.isBlank()) {
-                return null;
-            }
-        } catch (IOException e) {
-            log.error(e);
-        }
-        return title;
-    }
-
-    public List<Chapter> getChapterList(String url) {
+    public List<Chapter> getChapterListQQ(String url) {
         List<Chapter> lstChapter = new ArrayList<>();
         try {
-            Document document = Jsoup.connect(url).get();
-            Elements elements = document.select("ul#asc div.chapter > a");
             log.info("Fetching chapters...");
+            Document document = Jsoup.connect(url).userAgent("Chrome").get();
+            Elements elements = document.select(".content .name-chap > a");
             for (Element element : elements) {
-                lstChapter.add(new Chapter(element.text(), element.attr("href")));
+                lstChapter.add(new Chapter(element.text(), getBaseUrlQQ(url) + element.attr("href")));
             }
         } catch (IOException e) {
             log.error(e);
@@ -54,7 +39,7 @@ public class Nettruyen {
         return lstChapter;
     }
 
-    public void downloadManga(String title, List<Chapter> lstChapter) {
+    public void downloadMangaQQ(String title, List<Chapter> lstChapter) {
 
         Path mangaDir = Paths.get(Config.getInstance().getProperty().getWorking_directory() + "/Mangas/");
 
@@ -73,29 +58,30 @@ public class Nettruyen {
             Path chapterPath = Paths.get(mangaDownloadPath.toAbsolutePath() + File.separator + chapter.getTitle());
             chapterPath.toFile().mkdir();
 
-            downloadChapter(chapter, chapterPath);
+            downloadChapterQQ(chapter, chapterPath);
 
             if (PDFHelper.isFolderEmpty(chapterPath.toString())) {
                 log.error("Failed to download {} ?!", chapter.getTitle());
                 log.warn("Retry to download...");
-                downloadChapter(chapter, chapterPath);
+                downloadChapterQQ(chapter, chapterPath);
             }
         }
         log.info("Downloaded manga: {}", title);
         PDFHelper.convertToPDF(mangaDownloadPath.toString());
     }
 
-    private void downloadChapter(Chapter chapter, Path chapterPath) {
+    private void downloadChapterQQ(Chapter chapter, Path chapterPath) {
         log.info("Getting {} data...", chapter.getTitle());
         try {
-            Document readingBox = Jsoup.connect(chapter.getSrc()).get();
-            Elements readingDetail = readingBox.select("div.page-chapter > img");
+            Document readingBox = Jsoup.connect(chapter.getSrc()).userAgent("Chrome").get();
+            Elements readingDetail = readingBox.select("div[class=page-chapter] > img");
 
             log.info("Downloading {} images...", chapter.getTitle());
             for (Element imgDetail : readingDetail) {
-                String imgSrc = imgDetail.attr("data-src");
+                String imgSrc = imgDetail.attr("src");
                 //Create path to download chapter image
-                Path imgPath = Paths.get(chapterPath.toAbsolutePath() + File.separator + imgSrc.substring(imgSrc.lastIndexOf('/') + 1));
+                String fileName = imgSrc.substring(imgSrc.lastIndexOf("/") + 1, imgSrc.lastIndexOf("?"));
+                Path imgPath = Paths.get(chapterPath.toAbsolutePath() + File.separator + fileName);
                 try {
                     FileUtils.copyURLToFile(new URL(imgSrc), imgPath.toFile());
                 } catch (IOException e) {
@@ -107,4 +93,30 @@ public class Nettruyen {
             log.error(e);
         }
     }
+
+    public String getMangaTitleQQ(String url) {
+        log.info("Getting information...");
+        String title = null;
+        try {
+            Document document = Jsoup.connect(url).get();
+            title = document.select("div[class=book_other] > h1").text();
+            if (title.isBlank()) {
+                return null;
+            }
+        } catch (IOException e) {
+            log.error(e);
+        }
+        return title;
+    }
+
+    public String getBaseUrlQQ(String urlString) {
+        try {
+            URL url = new URL(urlString);
+            return url.getProtocol() + "://" + url.getHost();
+        } catch (MalformedURLException e) {
+            log.error("Invalid URL format: {}", e.getMessage());
+            return null;
+        }
+    }
+
 }

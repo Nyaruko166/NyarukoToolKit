@@ -1,4 +1,5 @@
 import Connector.Nettruyen;
+import Connector.TruyenQQ;
 import Model.AppConfig;
 import Model.Chapter;
 import Util.Color;
@@ -100,30 +101,52 @@ public class Main {
 
     private static void mangaCrawler(Terminal terminal) throws IOException {
         Nettruyen nettruyen = new Nettruyen();
+        TruyenQQ truyenQQ = new TruyenQQ();
         String title;
         String mangaUrl;
+        String host;
+
         do {
+
             log.debug("Right now we can only download manga from Nettruyen-likes website...");
             log.info("Enter manga url: ");
             mangaUrl = scanner.nextLine();
-            title = nettruyen.getMangaTitle(mangaUrl);
+            if (mangaUrl.contains("truyenqq")) {
+                title = truyenQQ.getMangaTitleQQ(mangaUrl);
+                host = "truyenqq";
+            } else {
+                host = "nettruyen";
+                title = nettruyen.getMangaTitle(mangaUrl);
+            }
+
         } while (title == null);
 
-        List<Chapter> lstChapter = nettruyen.getChapterList(mangaUrl);
+        switch (host) {
+            case "truyenqq" -> {
+                List<Chapter> lstChapter = truyenQQ.getChapterListQQ(mangaUrl);
+                List<Chapter> selectedChapters = checkboxConsole(terminal, lstChapter);
+                log.info("{} chapters selected.", selectedChapters.size());
 
-        List<Chapter> selectedChapters = checkboxConsole(terminal, lstChapter);
+                //Choose none = download all
+                if (selectedChapters.isEmpty()) {
+                    truyenQQ.downloadMangaQQ(title, lstChapter);
+                } else {
+                    truyenQQ.downloadMangaQQ(title, selectedChapters);
+                }
+            }
 
-        log.info("{} chapters selected.", selectedChapters.size());
+            case "nettruyen" -> {
+                List<Chapter> lstChapter = nettruyen.getChapterList(mangaUrl);
+                List<Chapter> selectedChapters = checkboxConsole(terminal, lstChapter);
+                log.info("{} chapters selected.", selectedChapters.size());
 
-        for (Chapter x : selectedChapters) {
-            log.info(x.getTitle());
-        }
-
-        //Choose none = download all
-        if (selectedChapters.isEmpty()) {
-            nettruyen.downloadManga(title, lstChapter);
-        } else {
-            nettruyen.downloadManga(title, selectedChapters);
+                //Choose none = download all
+                if (selectedChapters.isEmpty()) {
+                    nettruyen.downloadManga(title, lstChapter);
+                } else {
+                    nettruyen.downloadManga(title, selectedChapters);
+                }
+            }
         }
 
         terminal.flush();
@@ -270,8 +293,7 @@ public class Main {
         }
     }
 
-    private static void printCheckboxMenu(List<String> options, boolean[] selected, int selectedIndex,
-                                          Terminal terminal, int startIndex, int endIndex) throws IOException {
+    private static void printCheckboxMenu(List<String> options, boolean[] selected, int selectedIndex, Terminal terminal, int startIndex, int endIndex) throws IOException {
         for (int i = startIndex; i < endIndex; i++) {
             String checkboxMarker = selected[i] ? "[x] " : "[ ] ";
             String selectionMarker = (i == selectedIndex) ? "-> " : "   ";
