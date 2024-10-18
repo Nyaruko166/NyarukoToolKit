@@ -2,8 +2,8 @@ package Connector;
 
 import Model.Chapter;
 import Util.Config;
+import Util.NetworkHelper;
 import Util.PDFHelper;
-import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jsoup.Jsoup;
@@ -13,8 +13,6 @@ import org.jsoup.select.Elements;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -24,17 +22,36 @@ public class TruyenQQ {
 
     static Logger log = LogManager.getLogger(TruyenQQ.class);
 
+    public static void main(String[] args) {
+        TruyenQQ truyenQQ = new TruyenQQ();
+        String url = "https://truyenqqto.com/truyen-tranh/yuusha-ga-shinda-1278";
+//        String url2 = "https://tintruyen.net/1278/202/36.jpg?d=dfgd6546";
+//        String fileName = url2.substring(url2.lastIndexOf("/") + 1, url2.lastIndexOf("?"));
+//        System.out.println(fileName);
+        String title = truyenQQ.getMangaTitleQQ(url);
+        List<Chapter> lstChapter = truyenQQ.getChapterListQQ(url);
+//        for (Chapter x : lstChapter) {
+//            System.out.println(x.getTitle() + " - " + x.getSrc());
+//        }
+        truyenQQ.downloadMangaQQ(title, lstChapter);
+//        try {
+//            NetworkHelper.downloadImageByte(url2, NetworkHelper.getBaseUrl(url), "./libs/" + fileName);
+//        } catch (IOException e) {
+//            log.error(e);
+//        }
+    }
+
     public List<Chapter> getChapterListQQ(String url) {
         List<Chapter> lstChapter = new ArrayList<>();
-        try {
-            log.info("Fetching chapters...");
-            Document document = Jsoup.connect(url).userAgent("Chrome").get();
-            Elements elements = document.select(".content .name-chap > a");
-            for (Element element : elements) {
-                lstChapter.add(new Chapter(element.text(), getBaseUrlQQ(url) + element.attr("href")));
-            }
-        } catch (IOException e) {
-            log.error(e);
+        log.info("Fetching chapters...");
+
+        String html = NetworkHelper.fetchHtml(url);
+
+        Document document = Jsoup.parse(html);
+        Elements elements = document.select(".content .name-chap > a");
+        for (Element element : elements) {
+            String title = element.text().replaceAll("Chương (\\d+)", "Chapter $1");
+            lstChapter.add(new Chapter(title, NetworkHelper.getBaseUrl(url) + element.attr("href")));
         }
         return lstChapter;
     }
@@ -60,11 +77,11 @@ public class TruyenQQ {
 
             downloadChapterQQ(chapter, chapterPath);
 
-            if (PDFHelper.isFolderEmpty(chapterPath.toString())) {
-                log.error("Failed to download {} ?!", chapter.getTitle());
-                log.warn("Retry to download...");
-                downloadChapterQQ(chapter, chapterPath);
-            }
+//            if (PDFHelper.isFolderEmpty(chapterPath.toString())) {
+//                log.error("Failed to download {} ?!", chapter.getTitle());
+//                log.warn("Retry to download...");
+//                downloadChapterQQ(chapter, chapterPath);
+//            }
         }
         log.info("Downloaded manga: {}", title);
         PDFHelper.convertToPDF(mangaDownloadPath.toString());
@@ -72,51 +89,37 @@ public class TruyenQQ {
 
     private void downloadChapterQQ(Chapter chapter, Path chapterPath) {
         log.info("Getting {} data...", chapter.getTitle());
-        try {
-            Document readingBox = Jsoup.connect(chapter.getSrc()).userAgent("Chrome").get();
-            Elements readingDetail = readingBox.select("div[class=page-chapter] > img");
 
-            log.info("Downloading {} images...", chapter.getTitle());
-            for (Element imgDetail : readingDetail) {
-                String imgSrc = imgDetail.attr("src");
-                //Create path to download chapter image
-                String fileName = imgSrc.substring(imgSrc.lastIndexOf("/") + 1, imgSrc.lastIndexOf("?"));
-                Path imgPath = Paths.get(chapterPath.toAbsolutePath() + File.separator + fileName);
-                try {
-                    FileUtils.copyURLToFile(new URL(imgSrc), imgPath.toFile());
-                } catch (IOException e) {
-                    log.error("Error when download the img {}", imgSrc);
-                    log.error(e);
-                }
+        String html = NetworkHelper.fetchHtml(chapter.getSrc());
+        Document document = Jsoup.parse(html);
+
+        Elements readingDetail = document.select("div[class=page-chapter] > img");
+
+        log.info("Downloading {} images...", chapter.getTitle());
+        for (Element imgDetail : readingDetail) {
+            String imgSrc = imgDetail.attr("src");
+//            log.info("Img link {}", imgSrc);
+            //Create path to download chapter image
+            String fileName = imgSrc.substring(imgSrc.lastIndexOf("/") + 1, imgSrc.lastIndexOf("?"));
+            Path imgPath = Paths.get(chapterPath.toAbsolutePath() + File.separator + fileName);
+//            System.out.println(imgPath);
+            try {
+                NetworkHelper.downloadImageByte(imgSrc, NetworkHelper.getBaseUrl(chapter.getSrc()), imgPath.toString());
+            } catch (IOException e) {
+                log.error("Error when download the img {}", imgSrc);
+                log.error(e);
             }
-        } catch (IOException e) {
-            log.error(e);
         }
     }
 
     public String getMangaTitleQQ(String url) {
         log.info("Getting information...");
-        String title = null;
-        try {
-            Document document = Jsoup.connect(url).get();
-            title = document.select("div[class=book_other] > h1").text();
-            if (title.isBlank()) {
-                return null;
-            }
-        } catch (IOException e) {
-            log.error(e);
+        String html = NetworkHelper.fetchHtml(url);
+        Document document = Jsoup.parse(html);
+        String title = document.select("div[class=book_other] > h1").text();
+        if (title.isBlank()) {
+            return null;
         }
         return title;
     }
-
-    public String getBaseUrlQQ(String urlString) {
-        try {
-            URL url = new URL(urlString);
-            return url.getProtocol() + "://" + url.getHost();
-        } catch (MalformedURLException e) {
-            log.error("Invalid URL format: {}", e.getMessage());
-            return null;
-        }
-    }
-
 }

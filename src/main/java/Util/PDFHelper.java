@@ -67,14 +67,14 @@ public class PDFHelper {
                         pdDocument.close();
                         log.info("PDF created for {} successfully!", chapterName);
                     } else {
-                        log.info("No image files found in {}", chapterName);
+                        log.error("No image files found in {}", chapterName);
                     }
                 } catch (IOException | DocumentException e) {
                     log.error("Error creating PDF for {}: {}", chapterName, e.getMessage());
                 }
             }
         } else {
-            log.info("No chapter folders found in the specified root folder.");
+            log.error("No chapter folders found in the specified root folder.");
         }
     }
 
