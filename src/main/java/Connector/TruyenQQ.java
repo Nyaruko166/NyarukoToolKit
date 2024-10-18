@@ -22,25 +22,6 @@ public class TruyenQQ {
 
     static Logger log = LogManager.getLogger(TruyenQQ.class);
 
-    public static void main(String[] args) {
-        TruyenQQ truyenQQ = new TruyenQQ();
-        String url = "https://truyenqqto.com/truyen-tranh/yuusha-ga-shinda-1278";
-//        String url2 = "https://tintruyen.net/1278/202/36.jpg?d=dfgd6546";
-//        String fileName = url2.substring(url2.lastIndexOf("/") + 1, url2.lastIndexOf("?"));
-//        System.out.println(fileName);
-        String title = truyenQQ.getMangaTitleQQ(url);
-        List<Chapter> lstChapter = truyenQQ.getChapterListQQ(url);
-//        for (Chapter x : lstChapter) {
-//            System.out.println(x.getTitle() + " - " + x.getSrc());
-//        }
-        truyenQQ.downloadMangaQQ(title, lstChapter);
-//        try {
-//            NetworkHelper.downloadImageByte(url2, NetworkHelper.getBaseUrl(url), "./libs/" + fileName);
-//        } catch (IOException e) {
-//            log.error(e);
-//        }
-    }
-
     public List<Chapter> getChapterListQQ(String url) {
         List<Chapter> lstChapter = new ArrayList<>();
         log.info("Fetching chapters...");
@@ -62,7 +43,6 @@ public class TruyenQQ {
 
         Path mangaDownloadPath = null;
 
-//        log.info("Getting information...");
         mangaDownloadPath = Paths.get(mangaDir + File.separator + title);
         log.info("Fetching manga: {}", title);
         if (!mangaDownloadPath.toFile().exists()) {
@@ -77,11 +57,11 @@ public class TruyenQQ {
 
             downloadChapterQQ(chapter, chapterPath);
 
-//            if (PDFHelper.isFolderEmpty(chapterPath.toString())) {
-//                log.error("Failed to download {} ?!", chapter.getTitle());
-//                log.warn("Retry to download...");
-//                downloadChapterQQ(chapter, chapterPath);
-//            }
+            do {
+                log.error("Failed to download {}?!", chapter.getTitle());
+                log.warn("Retry to download...");
+                downloadChapterQQ(chapter, chapterPath);
+            } while (PDFHelper.isFolderEmpty(chapterPath.toString()));
         }
         log.info("Downloaded manga: {}", title);
         PDFHelper.convertToPDF(mangaDownloadPath.toString());

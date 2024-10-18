@@ -75,11 +75,11 @@ public class Nettruyen {
 
             downloadChapter(chapter, chapterPath);
 
-            if (PDFHelper.isFolderEmpty(chapterPath.toString())) {
-                log.error("Failed to download {} ?!", chapter.getTitle());
+            do {
+                log.error("Failed to download {}?!", chapter.getTitle());
                 log.warn("Retry to download...");
                 downloadChapter(chapter, chapterPath);
-            }
+            } while (PDFHelper.isFolderEmpty(chapterPath.toString()));
         }
         log.info("Downloaded manga: {}", title);
         PDFHelper.convertToPDF(mangaDownloadPath.toString());
