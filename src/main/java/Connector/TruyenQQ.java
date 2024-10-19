@@ -22,6 +22,14 @@ public class TruyenQQ {
 
     static Logger log = LogManager.getLogger(TruyenQQ.class);
 
+//    public static void main(String[] args) {
+//        TruyenQQ truyenQQ = new TruyenQQ();
+//        List<Chapter> chapters = truyenQQ.getChapterListQQ("https://truyenqqto.com/truyen-tranh/hanako-kun-sau-gio-hoc-8343");
+//        for (Chapter chapter : chapters) {
+//            System.out.println(chapter.getTitle());
+//        }
+//    }
+
     public List<Chapter> getChapterListQQ(String url) {
         List<Chapter> lstChapter = new ArrayList<>();
         log.info("Fetching chapters...");
@@ -31,7 +39,7 @@ public class TruyenQQ {
         Document document = Jsoup.parse(html);
         Elements elements = document.select(".content .name-chap > a");
         for (Element element : elements) {
-            String title = element.text().replaceAll("Chương (\\d+)", "Chapter $1");
+            String title = formatChapterName(element.text());
             lstChapter.add(new Chapter(title, NetworkHelper.getBaseUrl(url) + element.attr("href")));
         }
         return lstChapter;
@@ -57,14 +65,14 @@ public class TruyenQQ {
 
             downloadChapterQQ(chapter, chapterPath);
 
-            do {
+            while (PDFHelper.isFolderEmpty(chapterPath.toString())) {
                 log.error("Failed to download {}?!", chapter.getTitle());
                 log.warn("Retry to download...");
                 downloadChapterQQ(chapter, chapterPath);
-            } while (PDFHelper.isFolderEmpty(chapterPath.toString()));
+            }
         }
         log.info("Downloaded manga: {}", title);
-        PDFHelper.convertToPDF(mangaDownloadPath.toString());
+//        PDFHelper.convertAllChapterToPDF(mangaDownloadPath.toString());
     }
 
     private void downloadChapterQQ(Chapter chapter, Path chapterPath) {
@@ -78,18 +86,28 @@ public class TruyenQQ {
         log.info("Downloading {} images...", chapter.getTitle());
         for (Element imgDetail : readingDetail) {
             String imgSrc = imgDetail.attr("src");
-//            log.info("Img link {}", imgSrc);
-            //Create path to download chapter image
+            // Create path to download chapter image
             String fileName = imgSrc.substring(imgSrc.lastIndexOf("/") + 1, imgSrc.lastIndexOf("?"));
             Path imgPath = Paths.get(chapterPath.toAbsolutePath() + File.separator + fileName);
-//            System.out.println(imgPath);
-            try {
-                NetworkHelper.downloadImageByte(imgSrc, NetworkHelper.getBaseUrl(chapter.getSrc()), imgPath.toString());
-            } catch (IOException e) {
-                log.error("Error when download the img {}", imgSrc);
-                log.error(e);
+
+            boolean downloadSuccess = false;
+            int attempt = 0;
+
+            // Retry loop may cause soft lock
+            while (!downloadSuccess) {
+                try {
+                    NetworkHelper.downloadImageByte(imgSrc, NetworkHelper.getBaseUrl(chapter.getSrc()), imgPath.toString());
+                    downloadSuccess = true; // Mark download as successful
+//                    log.info("Successfully downloaded image: {}", imgSrc);
+                } catch (IOException e) {
+                    attempt++;
+                    log.error("Error downloading image {}. Attempt: {}", imgSrc, attempt);
+                    log.error(e);
+                }
             }
         }
+        log.info("Converting {} to PDF", chapter.getTitle());
+        PDFHelper.convertSingleChapterToPDF(chapterPath);
     }
 
     public String getMangaTitleQQ(String url) {
@@ -101,5 +119,10 @@ public class TruyenQQ {
             return null;
         }
         return title;
+    }
+
+    private String formatChapterName(String title) {
+        // Replace all occurrences of "Chuong n" or "Chương n" with "Chapter n"
+        return title.replaceAll("Chương|Chuong", "Chapter");
     }
 }

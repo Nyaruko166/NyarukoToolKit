@@ -18,7 +18,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 public class Nettruyen {
 
@@ -75,14 +74,14 @@ public class Nettruyen {
 
             downloadChapter(chapter, chapterPath);
 
-            do {
+            while (PDFHelper.isFolderEmpty(chapterPath.toString())) {
                 log.error("Failed to download {}?!", chapter.getTitle());
                 log.warn("Retry to download...");
                 downloadChapter(chapter, chapterPath);
-            } while (PDFHelper.isFolderEmpty(chapterPath.toString()));
+            }
         }
         log.info("Downloaded manga: {}", title);
-        PDFHelper.convertToPDF(mangaDownloadPath.toString());
+        PDFHelper.convertAllChapterToPDF(mangaDownloadPath.toString());
     }
 
     private void downloadChapter(Chapter chapter, Path chapterPath) {

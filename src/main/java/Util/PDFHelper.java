@@ -20,7 +20,7 @@ public class PDFHelper {
 
     static Logger log = LogManager.getLogger(PDFHelper.class);
 
-    public static void convertToPDF(String rootFolderPath) {
+    public static void convertAllChapterToPDF(String rootFolderPath) {
 
         String outputFolderPath = rootFolderPath + "/PDF";
 
@@ -31,50 +31,74 @@ public class PDFHelper {
 
         log.info("Creating PDF...");
         File rootFolder = new File(rootFolderPath);
+        //List chapter folder inside manga folder
         File[] chapterFolders = rootFolder.listFiles(File::isDirectory);
 
         if (chapterFolders != null) {
+
             for (File chapterFolder : chapterFolders) {
                 String chapterName = chapterFolder.getName();
+                //Exclude PDF folder
                 if (chapterName.equalsIgnoreCase("pdf")) {
                     continue;
                 }
-                String outputPdfPath = outputFolderPath + File.separator + chapterName + ".pdf";
-
-                try (FileOutputStream fos = new FileOutputStream(outputPdfPath)) {
-                    Document pdDocument = new Document();
-                    PdfWriter.getInstance(pdDocument, fos);
-                    pdDocument.open();
-
-                    File[] imageFiles = chapterFolder.listFiles((dir, name) -> name.toLowerCase()
-                            .matches(".*\\.(jpg|jpeg|png|bmp|gif)$"));
-
-                    if (imageFiles != null && imageFiles.length > 0) {
-                        // Sort image files numerically within each chapter folder
-                        Arrays.sort(imageFiles, Comparator.comparingInt(f -> extractNumber(f.getName())));
-
-                        for (File imageFile : imageFiles) {
-                            Image image = Image.getInstance(imageFile.getAbsolutePath());
-
-                            // Set the page size to match the image size
-                            Rectangle pageSize = new Rectangle(image.getWidth(), image.getHeight());
-                            pdDocument.setPageSize(pageSize);
-                            pdDocument.newPage();
-
-                            image.setAbsolutePosition(0, 0);
-                            pdDocument.add(image);
-                        }
-                        pdDocument.close();
-                        log.info("PDF created for {} successfully!", chapterName);
-                    } else {
-                        log.error("No image files found in {}", chapterName);
-                    }
-                } catch (IOException | DocumentException e) {
-                    log.error("Error creating PDF for {}: {}", chapterName, e.getMessage());
-                }
+                //Create output Chapter PDF path
+                createPDF(outputFolderPath, chapterFolder, chapterName);
             }
         } else {
             log.error("No chapter folders found in the specified root folder.");
+        }
+    }
+
+    public static void convertSingleChapterToPDF(Path chapterPath) {
+
+        String outputFolderPath = chapterPath.getParent() + "/PDF";
+
+        Path outputPath = Paths.get(outputFolderPath);
+        if (!outputPath.toFile().exists()) {
+            outputPath.toFile().mkdir();
+        }
+
+        File chapterFolder = chapterPath.toFile();
+        String chapterName = chapterFolder.getName();
+
+        //Create output Chapter PDF path
+        createPDF(outputFolderPath, chapterFolder, chapterName);
+    }
+
+    private static void createPDF(String outputFolderPath, File chapterFolder, String chapterName) {
+        String outputPdfPath = outputFolderPath + File.separator + chapterName + ".pdf";
+
+        try (FileOutputStream fos = new FileOutputStream(outputPdfPath)) {
+            Document pdDocument = new Document();
+            PdfWriter.getInstance(pdDocument, fos);
+            pdDocument.open();
+
+            File[] imageFiles = chapterFolder.listFiles((dir, name) -> name.toLowerCase()
+                    .matches(".*\\.(jpg|jpeg|png|bmp|gif)$"));
+
+            if (imageFiles != null && imageFiles.length > 0) {
+                // Sort image files numerically within each chapter folder
+                Arrays.sort(imageFiles, Comparator.comparingInt(f -> extractNumber(f.getName())));
+
+                for (File imageFile : imageFiles) {
+                    Image image = Image.getInstance(imageFile.getAbsolutePath());
+
+                    // Set the page size to match the image size
+                    Rectangle pageSize = new Rectangle(image.getWidth(), image.getHeight());
+                    pdDocument.setPageSize(pageSize);
+                    pdDocument.newPage();
+
+                    image.setAbsolutePosition(0, 0);
+                    pdDocument.add(image);
+                }
+                pdDocument.close();
+                log.info("PDF created for {} successfully!", chapterName);
+            } else {
+                log.error("No image files found in {}", chapterName);
+            }
+        } catch (IOException | DocumentException e) {
+            log.error("Error creating PDF for {}: {}", chapterName, e.getMessage());
         }
     }
 
