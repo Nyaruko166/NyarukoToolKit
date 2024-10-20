@@ -119,7 +119,7 @@ public class Main {
                 title = nettruyen.getMangaTitle(mangaUrl);
             }
 
-        } while (title == null);
+        } while (title == null || title.isBlank());
 
         switch (host) {
             case "truyenqq" -> {

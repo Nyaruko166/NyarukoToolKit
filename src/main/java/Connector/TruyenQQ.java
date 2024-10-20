@@ -22,14 +22,6 @@ public class TruyenQQ {
 
     static Logger log = LogManager.getLogger(TruyenQQ.class);
 
-//    public static void main(String[] args) {
-//        TruyenQQ truyenQQ = new TruyenQQ();
-//        List<Chapter> chapters = truyenQQ.getChapterListQQ("https://truyenqqto.com/truyen-tranh/hanako-kun-sau-gio-hoc-8343");
-//        for (Chapter chapter : chapters) {
-//            System.out.println(chapter.getTitle());
-//        }
-//    }
-
     public List<Chapter> getChapterListQQ(String url) {
         List<Chapter> lstChapter = new ArrayList<>();
         log.info("Fetching chapters...");
