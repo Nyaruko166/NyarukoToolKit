@@ -90,7 +90,6 @@ public class TruyenQQ {
                 try {
                     NetworkHelper.downloadImageByte(imgSrc, NetworkHelper.getBaseUrl(chapter.getSrc()), imgPath.toString());
                     downloadSuccess = true; // Mark download as successful
-//                    log.info("Successfully downloaded image: {}", imgSrc);
                 } catch (IOException e) {
                     attempt++;
                     log.error("Error downloading image {}. Attempt: {}", imgSrc, attempt);

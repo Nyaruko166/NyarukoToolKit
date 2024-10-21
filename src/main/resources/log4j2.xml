@@ -6,6 +6,10 @@
                            pattern="%highlight{%d{HH:mm:ss} %-3level - %msg%n}{FATAL=red blink
                            , ERROR=red, WARN=yellow bold, INFO=green, DEBUG=green bold, TRACE=blue}"/>
         </Console>
+
+        <!--        <File name="MyFile" fileName="./libs/app.log">-->
+        <!--            <PatternLayout pattern="%d{yyyy-mm-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>-->
+        <!--        </File>-->
     </Appenders>
     <Loggers>
         <Root level="trace">

@@ -1,3 +1,4 @@
+import Connector.Mangadex;
 import Connector.Nettruyen;
 import Connector.TruyenQQ;
 import Model.AppConfig;
@@ -102,9 +103,10 @@ public class Main {
     private static void mangaCrawler(Terminal terminal) throws IOException {
         Nettruyen nettruyen = new Nettruyen();
         TruyenQQ truyenQQ = new TruyenQQ();
-        String title;
+        Mangadex mangadex = new Mangadex();
         String mangaUrl;
-        String host;
+        String title = "";
+        String host = "";
 
         do {
 
@@ -114,14 +116,30 @@ public class Main {
             if (mangaUrl.contains("truyenqq")) {
                 title = truyenQQ.getMangaTitleQQ(mangaUrl);
                 host = "truyenqq";
-            } else {
+            } else if (mangaUrl.contains("nettruyen")) {
                 host = "nettruyen";
                 title = nettruyen.getMangaTitle(mangaUrl);
+            } else if (mangaUrl.contains("mangadex")) {
+                host = "mangadex";
+                title = mangadex.getTitleFromURL(mangaUrl);
             }
 
         } while (title == null || title.isBlank());
 
         switch (host) {
+            case "mangadex" -> {
+                List<Chapter> lstChapter = mangadex.getChapter(mangaUrl);
+                List<Chapter> selectedChapters = checkboxConsole(terminal, lstChapter);
+                log.info("{} chapters selected.", selectedChapters.size());
+
+                //Choose none = download all
+                if (selectedChapters.isEmpty()) {
+                    mangadex.downloadManga(title, lstChapter);
+                } else {
+                    mangadex.downloadManga(title, selectedChapters);
+                }
+            }
+
             case "truyenqq" -> {
                 List<Chapter> lstChapter = truyenQQ.getChapterListQQ(mangaUrl);
                 List<Chapter> selectedChapters = checkboxConsole(terminal, lstChapter);
