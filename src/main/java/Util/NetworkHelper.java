@@ -1,6 +1,5 @@
 package Util;
 
-import interceptor.RateLimitInterceptor;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
