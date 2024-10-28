@@ -24,9 +24,9 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class Mangadex {
+public class Mangadex implements SourceConnector {
 
-    static Logger log = LogManager.getLogger(Mangadex.class);
+//    static Logger log = LogManager.getLogger(Mangadex.class);
 
     static final String MANGADEX_API = "https://api.mangadex.org";
     static final String MANGADEX_GET_MANGA_API = "%s/manga/%s";
@@ -34,10 +34,8 @@ public class Mangadex {
     static final String MANGADEX_GET_CHAPTER_IMAGES_API = "%s/at-home/server/%s";
     static final String MANGADEX_GET_IMAGES_DOWNLOAD_API = "%s/data/%s/%s";
 
-    Gson gson = new Gson();
-
-    public String getTitleFromURL(String mangaURL) {
-
+    @Override
+    public String getMangaTitle(String mangaURL) {
         log.info("Getting information...");
         String url = MANGADEX_GET_MANGA_API.formatted(MANGADEX_API, getUUIDFromURL(mangaURL));
 
@@ -55,7 +53,8 @@ public class Mangadex {
         //@formatter:on
     }
 
-    public List<Chapter> getChapter(String mangaURL) {
+    @Override
+    public List<Chapter> getChapterList(String mangaURL) {
         String baseUrl = MANGADEX_GET_CHAPTERS_API.formatted(MANGADEX_API, getUUIDFromURL(mangaURL));
         //@formatter:off
         HttpUrl.Builder urlBuilder = HttpUrl.parse(baseUrl).newBuilder()
@@ -84,9 +83,8 @@ public class Mangadex {
         return lstChapters;
     }
 
+    @Override
     public void downloadManga(String title, List<Chapter> lstChapter) {
-
-        Path mangaDir = Paths.get(Config.getInstance().getProperty().getWorking_directory() + "/Mangas/");
 
         Path mangaDownloadPath = null;
 
@@ -113,7 +111,8 @@ public class Mangadex {
         log.info("Downloaded manga: {}", title);
     }
 
-    private void downloadChapter(Chapter chapter, Path chapterPath) {
+    @Override
+    public void downloadChapter(Chapter chapter, Path chapterPath) {
         log.info("Getting {} data...", chapter.getTitle());
 
         String url = MANGADEX_GET_CHAPTER_IMAGES_API.formatted(MANGADEX_API, chapter.getSrc());

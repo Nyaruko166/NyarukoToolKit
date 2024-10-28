@@ -1,11 +1,8 @@
 package Connector;
 
 import Model.Chapter;
-import Util.Config;
 import Util.NetworkHelper;
 import Util.PDFHelper;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -18,29 +15,40 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TruyenQQ {
+public class TruyenQQ implements SourceConnector {
 
-    static Logger log = LogManager.getLogger(TruyenQQ.class);
+//    static Logger log = LogManager.getLogger(TruyenQQ.class);
 
-    public List<Chapter> getChapterListQQ(String url) {
+    @Override
+    public String getMangaTitle(String mangaUrl) {
+        log.info("Getting information...");
+        String html = NetworkHelper.fetchHtml(mangaUrl);
+        Document document = Jsoup.parse(html);
+        String title = document.select("div[class=book_other] > h1").text();
+        if (title.isBlank()) {
+            return null;
+        }
+        return title;
+    }
+
+    @Override
+    public List<Chapter> getChapterList(String mangaURL) {
         List<Chapter> lstChapter = new ArrayList<>();
         log.info("Fetching chapters...");
 
-        String html = NetworkHelper.fetchHtml(url);
+        String html = NetworkHelper.fetchHtml(mangaURL);
 
         Document document = Jsoup.parse(html);
         Elements elements = document.select(".content .name-chap > a");
         for (Element element : elements) {
             String title = formatChapterName(element.text());
-            lstChapter.add(new Chapter(title, NetworkHelper.getBaseUrl(url) + element.attr("href")));
+            lstChapter.add(new Chapter(title, NetworkHelper.getBaseUrl(mangaURL) + element.attr("href")));
         }
         return lstChapter;
     }
 
-    public void downloadMangaQQ(String title, List<Chapter> lstChapter) {
-
-        Path mangaDir = Paths.get(Config.getInstance().getProperty().getWorking_directory() + "/Mangas/");
-
+    @Override
+    public void downloadManga(String title, List<Chapter> lstChapter) {
         Path mangaDownloadPath = null;
 
         mangaDownloadPath = Paths.get(mangaDir + File.separator + title);
@@ -55,19 +63,20 @@ public class TruyenQQ {
             Path chapterPath = Paths.get(mangaDownloadPath.toAbsolutePath() + File.separator + chapter.getTitle());
             chapterPath.toFile().mkdir();
 
-            downloadChapterQQ(chapter, chapterPath);
+            downloadChapter(chapter, chapterPath);
 
             while (PDFHelper.isFolderEmpty(chapterPath.toString())) {
                 log.error("Failed to download {}?!", chapter.getTitle());
                 log.warn("Retry to download...");
-                downloadChapterQQ(chapter, chapterPath);
+                downloadChapter(chapter, chapterPath);
             }
         }
         log.info("Downloaded manga: {}", title);
 //        PDFHelper.convertAllChapterToPDF(mangaDownloadPath.toString());
     }
 
-    private void downloadChapterQQ(Chapter chapter, Path chapterPath) {
+    @Override
+    public void downloadChapter(Chapter chapter, Path chapterPath) {
         log.info("Getting {} data...", chapter.getTitle());
 
         String html = NetworkHelper.fetchHtml(chapter.getSrc());
@@ -99,17 +108,6 @@ public class TruyenQQ {
         }
         log.info("Converting {} to PDF", chapter.getTitle());
         PDFHelper.convertSingleChapterToPDF(chapterPath);
-    }
-
-    public String getMangaTitleQQ(String url) {
-        log.info("Getting information...");
-        String html = NetworkHelper.fetchHtml(url);
-        Document document = Jsoup.parse(html);
-        String title = document.select("div[class=book_other] > h1").text();
-        if (title.isBlank()) {
-            return null;
-        }
-        return title;
     }
 
     private String formatChapterName(String title) {

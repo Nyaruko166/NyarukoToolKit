@@ -2,6 +2,7 @@ package Connector;
 
 import Model.Chapter;
 import Util.Config;
+import Util.NetworkHelper;
 import Util.PDFHelper;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
@@ -19,10 +20,11 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Nettruyen {
+public class Nettruyen implements SourceConnector {
 
-    Logger log = LogManager.getLogger(Nettruyen.class);
+//    Logger log = LogManager.getLogger(Nettruyen.class);
 
+    @Override
     public String getMangaTitle(String url) {
         log.info("Getting information...");
         String title = null;
@@ -38,25 +40,22 @@ public class Nettruyen {
         return title;
     }
 
+    @Override
     public List<Chapter> getChapterList(String url) {
         List<Chapter> lstChapter = new ArrayList<>();
-        try {
-            Document document = Jsoup.connect(url).get();
-            Elements elements = document.select("ul#asc div.chapter > a");
-            log.info("Fetching chapters...");
-            for (Element element : elements) {
-                lstChapter.add(new Chapter(element.text(), element.attr("href")));
-            }
-        } catch (IOException e) {
-            log.error(e);
+
+        String html = NetworkHelper.fetchHtml(url);
+        Document document = Jsoup.parse(html);
+        Elements elements = document.select("ul#asc div.chapter > a");
+        log.info("Fetching chapters...");
+        for (Element element : elements) {
+            lstChapter.add(new Chapter(element.text(), element.attr("href")));
         }
         return lstChapter;
     }
 
+    @Override
     public void downloadManga(String title, List<Chapter> lstChapter) {
-
-        Path mangaDir = Paths.get(Config.getInstance().getProperty().getWorking_directory() + "/Mangas/");
-
         Path mangaDownloadPath = null;
 
 //        log.info("Getting information...");
@@ -84,26 +83,37 @@ public class Nettruyen {
         PDFHelper.convertAllChapterToPDF(mangaDownloadPath.toString());
     }
 
-    private void downloadChapter(Chapter chapter, Path chapterPath) {
+    @Override
+    public void downloadChapter(Chapter chapter, Path chapterPath) {
         log.info("Getting {} data...", chapter.getTitle());
-        try {
-            Document readingBox = Jsoup.connect(chapter.getSrc()).get();
-            Elements readingDetail = readingBox.select("div.page-chapter > img");
 
-            log.info("Downloading {} images...", chapter.getTitle());
-            for (Element imgDetail : readingDetail) {
-                String imgSrc = imgDetail.attr("data-src");
-                //Create path to download chapter image
-                Path imgPath = Paths.get(chapterPath.toAbsolutePath() + File.separator + imgSrc.substring(imgSrc.lastIndexOf('/') + 1));
+        String html = NetworkHelper.fetchHtml(chapter.getSrc());
+
+        Document readingBox = Jsoup.parse(html);
+        Elements readingDetail = readingBox.select("div.page-chapter > img");
+
+        log.info("Downloading {} images...", chapter.getTitle());
+        for (Element imgDetail : readingDetail) {
+            String imgSrc = imgDetail.attr("data-src");
+            //Create path to download chapter image
+            Path imgPath = Paths.get(chapterPath.toAbsolutePath() + File.separator + imgSrc.substring(imgSrc.lastIndexOf('/') + 1));
+
+            boolean downloadSuccess = false;
+            int attempt = 0;
+
+            // Retry loop may cause soft lock
+            while (!downloadSuccess) {
                 try {
-                    FileUtils.copyURLToFile(new URL(imgSrc), imgPath.toFile());
+                    NetworkHelper.downloadImageByte(imgSrc, NetworkHelper.getBaseUrl(chapter.getSrc()), imgPath.toString());
+                    downloadSuccess = true; // Mark download as successful
                 } catch (IOException e) {
-                    log.error("Error when download the img {}", imgSrc);
+                    attempt++;
+                    log.error("Error downloading image {}. Attempt: {}", imgSrc, attempt);
                     log.error(e);
                 }
             }
-        } catch (IOException e) {
-            log.error(e);
         }
+        log.info("Converting {} to PDF", chapter.getTitle());
+        PDFHelper.convertSingleChapterToPDF(chapterPath);
     }
 }

@@ -29,6 +29,7 @@ public class YoutubeUtil {
 
     private static final YouTube youtubeService = getService();
 
+    //Todo set title according to game, make terminal clip choice? maybe
     public static void main(String[] args) {
 //        uploadVideo("D:\\Videos\\Outplayed\\GTFO\\GTFO_10-24-2024_22-15-26-647\\GTFO_10-25-2024_0-56-40-500.mp4");
 //        uploadVideo("D:\\Videos\\Outplayed\\GTFO\\GTFO_10-24-2024_22-15-26-647\\GTFO_10-25-2024_0-45-49-999.mp4");
