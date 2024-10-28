@@ -1,5 +1,6 @@
 package Util;
 
+import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.googleapis.media.MediaHttpUploader;
 import com.google.api.client.http.FileContent;
 import com.google.api.client.http.javanet.NetHttpTransport;
@@ -8,10 +9,11 @@ import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.Video;
 import com.google.api.services.youtube.model.VideoSnippet;
 import com.google.api.services.youtube.model.VideoStatus;
+import com.google.auth.Credentials;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
-import handler.FileUploadProgressListener;
+import Handler.FileUploadProgressListener;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -28,23 +30,21 @@ public class YoutubeUtil {
     private static final YouTube youtubeService = getService();
 
     public static void main(String[] args) {
-        uploadVideo("D:\\Videos\\Outplayed\\GTFO\\GTFO_10-24-2024_22-15-26-647\\GTFO_10-25-2024_0-56-40-500.mp4");
+//        uploadVideo("D:\\Videos\\Outplayed\\GTFO\\GTFO_10-24-2024_22-15-26-647\\GTFO_10-25-2024_0-56-40-500.mp4");
+//        uploadVideo("D:\\Videos\\Outplayed\\GTFO\\GTFO_10-24-2024_22-15-26-647\\GTFO_10-25-2024_0-45-49-999.mp4");
+//        uploadVideo("D:\\Videos\\Outplayed\\GTFO\\GTFO_10-24-2024_22-15-26-647\\GTFO_10-25-2024_0-40-57-372.mp4");
+//        uploadVideo("D:\\Videos\\Outplayed\\GTFO\\GTFO_10-24-2024_22-15-26-647\\GTFO_10-25-2024_0-49-43-315.mp4");
+
     }
 
     private static YouTube getService() {
         // Create the credentials object
-        GoogleCredentials credentials = null;
-        try {
-            AccessToken accessToken = AccessToken.newBuilder().setTokenValue(Auth.getToken()).build();
-            credentials = GoogleCredentials.newBuilder().setAccessToken(accessToken).build();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-//        // Build the Drive service object
+        Credentials credentials = GoogleCredentials.create(Auth.getAccessToken());
+        // Build the Youtube service object
         assert credentials != null;
         return new YouTube.Builder(
-                new NetHttpTransport(),
-                new GsonFactory(),
+                Auth.HTTP_TRANSPORT,
+                Auth.JSON_FACTORY,
                 new HttpCredentialsAdapter(credentials))
                 .setApplicationName("Youtube-Uploader")
                 .build();

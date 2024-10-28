@@ -12,8 +12,12 @@
         <!--        </File>-->
     </Appenders>
     <Loggers>
-        <Root level="trace">
-            <AppenderRef ref="Console"/>
+        <Logger name="magibridge.net.dv8tion.jda" level="info"/>
+        <Logger name="magibridge.net.dv8tion.jda" level="debug"/>
+        <Root level="all">
+            <AppenderRef ref="Console" level="info"/>
+            <AppenderRef ref="Console" level="debug"/>
+            <AppenderRef ref="Console" level="error"/>
         </Root>
     </Loggers>
 </Configuration>

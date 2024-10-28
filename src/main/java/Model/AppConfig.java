@@ -16,6 +16,8 @@ public class AppConfig {
 
     private String yt_version;
 
+    private String discord_token;
+
     private String working_directory;
 
     public static AppConfig configTemplate() {
