@@ -20,7 +20,9 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -56,13 +58,12 @@ public class Mangadex implements SourceConnector {
     @Override
     public List<Chapter> getChapterList(String mangaURL) {
         String baseUrl = MANGADEX_GET_CHAPTERS_API.formatted(MANGADEX_API, getUUIDFromURL(mangaURL));
-        //@formatter:off
-        HttpUrl.Builder urlBuilder = HttpUrl.parse(baseUrl).newBuilder()
-                .addQueryParameter("translatedLanguage[]", "vi")
-                .addQueryParameter("order[chapter]", "asc");
-        //@formatter:on
 
-        String url = urlBuilder.build().toString();
+        Map<String, String> params = new HashMap<>();
+        params.put("translatedLanguage[]", "vi");
+        params.put("order[chapter]", "asc");
+
+        String url = ApiHelper.urlParamBuilder(baseUrl, params);
         String responseBody = ApiHelper.getRequest(url);
         JsonObject jsonBody = gson.fromJson(responseBody, JsonObject.class);
         JsonArray dataArray = jsonBody.getAsJsonArray("data");
@@ -137,7 +138,7 @@ public class Mangadex implements SourceConnector {
             try {
                 downloadUrl = new URL(MANGADEX_GET_IMAGES_DOWNLOAD_API.formatted(baseUrl, hash, imgId));
             } catch (MalformedURLException e) {
-                log.error("Malformed URL: {}", e);
+                log.error("Malformed URL: {}", e.getMessage());
             }
             String fileName = imgId.replaceAll("^(\\d+)-.*(\\.[^.]+)$", "$1$2");
             File downloadPath = new File(chapterPath + File.separator + fileName);

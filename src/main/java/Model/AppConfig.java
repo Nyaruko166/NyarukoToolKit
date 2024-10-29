@@ -18,6 +18,8 @@ public class AppConfig {
 
     private String discord_token;
 
+    private String discord_bot_api;
+
     private String working_directory;
 
     public static AppConfig configTemplate() {

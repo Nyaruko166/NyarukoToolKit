@@ -7,6 +7,8 @@ import Util.Color;
 import Util.TerminalHelper;
 import Util.YtdlUtil;
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -45,6 +47,12 @@ public class Main {
     private static final int PAGE_SIZE = 10;
 
     public static void main(String[] args) throws IOException {
+
+        if (true) {
+            uploadToYoutube(null);
+            System.exit(0);
+        }
+
         // Create a key map to bind keys to specific actions
         keyMap.bind("UP", "w");
         keyMap.bind("DOWN", "s");
@@ -100,6 +108,28 @@ public class Main {
         terminal.reader().read();
     }
 
+    private static void uploadToYoutube(Terminal terminal) throws IOException {
+        Path videoFolder;
+
+        //Quick validate shit
+        while (true) {
+            System.out.println("Enter path to video folder: ");
+            videoFolder = Path.of(scanner.nextLine().replace("\\", "/"));
+            if (!videoFolder.toFile().exists() || !videoFolder.toFile().isDirectory()) {
+                log.error("Please enter a valid path to video folder!");
+            } else {
+                break;
+            }
+        }
+
+        //Todo handle not found index.json or make new one in cli or some shit
+        File indexFile = new File(videoFolder + "/index.json");
+        JsonArray jsonArray = gson.fromJson(new FileReader(indexFile), JsonArray.class);
+        for (JsonElement element : jsonArray) {
+
+        }
+    }
+
     private static void mangaCrawler(Terminal terminal) throws IOException {
         Nettruyen nettruyen = new Nettruyen();
         TruyenQQ truyenQQ = new TruyenQQ();
@@ -114,21 +144,21 @@ public class Main {
             log.info("Enter manga url: ");
             mangaUrl = scanner.nextLine();
             if (mangaUrl.contains("truyenqq")) {
-                title = truyenQQ.getMangaTitleQQ(mangaUrl);
+                title = truyenQQ.getMangaTitle(mangaUrl);
                 host = "truyenqq";
             } else if (mangaUrl.contains("nettruyen")) {
                 host = "nettruyen";
                 title = nettruyen.getMangaTitle(mangaUrl);
             } else if (mangaUrl.contains("mangadex")) {
                 host = "mangadex";
-                title = mangadex.getTitleFromURL(mangaUrl);
+                title = mangadex.getMangaTitle(mangaUrl);
             }
 
         } while (title == null || title.isBlank());
 
         switch (host) {
             case "mangadex" -> {
-                List<Chapter> lstChapter = mangadex.getChapter(mangaUrl);
+                List<Chapter> lstChapter = mangadex.getChapterList(mangaUrl);
                 List<Chapter> selectedChapters = checkboxConsole(terminal, lstChapter);
                 log.info("{} chapters selected.", selectedChapters.size());
 
@@ -141,15 +171,15 @@ public class Main {
             }
 
             case "truyenqq" -> {
-                List<Chapter> lstChapter = truyenQQ.getChapterListQQ(mangaUrl);
+                List<Chapter> lstChapter = truyenQQ.getChapterList(mangaUrl);
                 List<Chapter> selectedChapters = checkboxConsole(terminal, lstChapter);
                 log.info("{} chapters selected.", selectedChapters.size());
 
                 //Choose none = download all
                 if (selectedChapters.isEmpty()) {
-                    truyenQQ.downloadMangaQQ(title, lstChapter);
+                    truyenQQ.downloadManga(title, lstChapter);
                 } else {
-                    truyenQQ.downloadMangaQQ(title, selectedChapters);
+                    truyenQQ.downloadManga(title, selectedChapters);
                 }
             }
 
@@ -175,27 +205,19 @@ public class Main {
     // Method to handle the selected option
     private static void handleMenuSelection(String selectedOption, Terminal terminal) throws IOException {
         switch (selectedOption) {
-            case "Check for update":
-                checkForUpdate(terminal);
-                break;
-            case "Download video from youtube":
-                downloadYT(terminal);
-                break;
-            case "Download manga to PDF":
-                mangaCrawler(terminal);
-                break;
-            case "QUIT":
-                terminal.writer().println("Goodbye!");
-                break;
-            default:
-                TerminalHelper.printLn(terminal, Color.RED, "Invalid option!");
-                break;
+            case "Check for update" -> checkForUpdate(terminal);
+            case "Download video from youtube" -> downloadYT(terminal);
+            case "Download manga to PDF" -> mangaCrawler(terminal);
+            case "Upload video to YT and send to Discord" -> uploadToYoutube(terminal);
+            case "QUIT" -> terminal.writer().println("Goodbye!");
+            default -> TerminalHelper.printLn(terminal, Color.RED, "Invalid option!");
         }
     }
 
     private static void menuConsole(Terminal terminal) {
 
-        List<String> options = Arrays.asList("Check for update", "Download video from youtube", "Download manga to PDF");
+        List<String> options = Arrays.asList("Check for update", "Download video from youtube", "Download manga to PDF",
+                "Upload video to YT and send to Discord");
 
         try {
             BindingReader bindingReader = new BindingReader(terminal.reader());
@@ -340,7 +362,7 @@ public class Main {
                     System.out.println("Choose working directory: ");
                     dirUrl = scanner.nextLine().replace("\\", "/");
                     File dir = new File(dirUrl);
-                    if (!dir.exists() && !dir.isDirectory()) {
+                    if (!dir.exists() || !dir.isDirectory()) {
                         log.error("Enter valid working directory!");
                     } else {
                         break;
