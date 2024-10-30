@@ -1,12 +1,5 @@
 package Connector;
 
-import Model.MemberPallete;
-import Util.ListTable;
-import Util.Table;
-
-import java.io.File;
-import java.util.List;
-
 public class Test {
 
 //    public static void main(String[] args) {

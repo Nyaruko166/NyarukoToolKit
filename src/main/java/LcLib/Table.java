@@ -1,4 +1,4 @@
-package Util;
+package LcLib;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
