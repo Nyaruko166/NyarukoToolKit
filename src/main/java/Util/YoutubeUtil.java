@@ -16,8 +16,8 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
-import java.util.Calendar;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 public class YoutubeUtil {
@@ -51,7 +51,13 @@ public class YoutubeUtil {
                 .build();
     }
 
-    public static void uploadVideo(String videoPath) {
+    public static void uploadVideo(String title, File videoFile) {
+
+        String[] nameArray = videoFile.getName().split("_");
+
+        String newDate = LocalDate.parse(nameArray[1], DateTimeFormatter.ofPattern("MM-dd-yyyy"))
+                .format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+
         Video video = new Video();
 
         VideoStatus videoStatus = new VideoStatus();
@@ -59,13 +65,10 @@ public class YoutubeUtil {
         video.setStatus(videoStatus);
 
         VideoSnippet videoSnippet = new VideoSnippet();
-        videoSnippet.setTitle("Test Title");
-        Calendar calendar = Calendar.getInstance();
-        videoSnippet.setDescription("Game abc - " + calendar.getTime());
-        videoSnippet.setTags(List.of("Sech", "Test"));
+        videoSnippet.setTitle(title);
+        videoSnippet.setDescription("Game: %s - %s".formatted(nameArray[0], newDate));
         video.setSnippet(videoSnippet);
 
-        File videoFile = Paths.get(videoPath).toFile();
         FileContent mediaContent = new FileContent("video/*", videoFile);
 
         try {
@@ -73,6 +76,7 @@ public class YoutubeUtil {
             request.getMediaHttpUploader().setDirectUploadEnabled(false);
             request.getMediaHttpUploader().setChunkSize(MediaHttpUploader.DEFAULT_CHUNK_SIZE);
             request.getMediaHttpUploader().setProgressListener(new FileUploadProgressListener());
+            log.info("Uploading video: Title - {} || File Name - {}", title, videoFile.getName());
             Video response = request.execute();
             String videoId = response.getId();
             log.info("Video uploaded successfully: {}", videoId);
@@ -80,11 +84,15 @@ public class YoutubeUtil {
 
             JsonObject jsonObject = new JsonObject();
             jsonObject.addProperty("videoId", videoId);
-            String res = ApiHelper.postRequest(Config.getInstance().getProperty().getDiscord_bot_api() + "/send-clip",
-                    ApiHelper.requestBodyBuilder(jsonObject.toString()));
-            log.info(res);
-        } catch (IOException e) {
+            String url = Config.getInstance().getProperty().getDiscord_bot_api() + "/discord/send-clip";
+            ApiHelper.postRequest(url, ApiHelper.requestBodyBuilder(jsonObject.toString()));
+//            log.info(res);
+
+            log.warn("Sleep for 5s...");
+            Thread.sleep(5000);
+        } catch (IOException | InterruptedException e) {
             log.error(e);
+            System.exit(0);
         }
     }
 

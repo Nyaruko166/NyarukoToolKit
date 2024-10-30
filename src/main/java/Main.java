@@ -3,12 +3,11 @@ import Connector.Nettruyen;
 import Connector.TruyenQQ;
 import Model.AppConfig;
 import Model.Chapter;
-import Util.Color;
-import Util.TerminalHelper;
-import Util.YtdlUtil;
+import Util.*;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -48,10 +47,14 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
 
-        if (true) {
-            uploadToYoutube(null);
-            System.exit(0);
-        }
+//        if (true) {
+//            JsonObject jsonObject = new JsonObject();
+//            jsonObject.addProperty("videoId", "yhCo53wHTeY");
+//            String url = Config.getInstance().getProperty().getDiscord_bot_api() + "/discord/send-clip";
+//            ApiHelper.postRequest(url,
+//                    ApiHelper.requestBodyBuilder(jsonObject.toString()));
+//            System.exit(0);
+//        }
 
         // Create a key map to bind keys to specific actions
         keyMap.bind("UP", "w");
@@ -110,10 +113,9 @@ public class Main {
 
     private static void uploadToYoutube(Terminal terminal) throws IOException {
         Path videoFolder;
-
         //Quick validate shit
         while (true) {
-            System.out.println("Enter path to video folder: ");
+            TerminalHelper.printLn(terminal, Color.GREEN, "Enter path to video folder:");
             videoFolder = Path.of(scanner.nextLine().replace("\\", "/"));
             if (!videoFolder.toFile().exists() || !videoFolder.toFile().isDirectory()) {
                 log.error("Please enter a valid path to video folder!");
@@ -122,12 +124,29 @@ public class Main {
             }
         }
 
+        File noUpload = new File(videoFolder + "/.noupload");
+        if (noUpload.exists()) {
+            log.info("Found .noupload, this folder already upload to youtube or user don't want to upload!");
+            return;
+        }
         //Todo handle not found index.json or make new one in cli or some shit
         File indexFile = new File(videoFolder + "/index.json");
+        if (indexFile.exists()) {
+            log.info("Found index.json");
+        }
         JsonArray jsonArray = gson.fromJson(new FileReader(indexFile), JsonArray.class);
         for (JsonElement element : jsonArray) {
-
+            JsonObject jsonObject = element.getAsJsonObject();
+            YoutubeUtil.uploadVideo(jsonObject.get("title").getAsString(),
+                    new File(videoFolder + jsonObject.get("path").getAsString()));
         }
+
+        //Mark as done
+        noUpload.createNewFile();
+
+        terminal.flush();
+        log.info("Press any key to continue...");
+        terminal.reader().read();
     }
 
     private static void mangaCrawler(Terminal terminal) throws IOException {
@@ -160,12 +179,15 @@ public class Main {
             case "mangadex" -> {
                 List<Chapter> lstChapter = mangadex.getChapterList(mangaUrl);
                 List<Chapter> selectedChapters = checkboxConsole(terminal, lstChapter);
-                log.info("{} chapters selected.", selectedChapters.size());
+
+                mangadex.downloadMangaCovers(title, mangaUrl);
 
                 //Choose none = download all
                 if (selectedChapters.isEmpty()) {
+                    log.info("Download all chapters.");
                     mangadex.downloadManga(title, lstChapter);
                 } else {
+                    log.info("{} chapters selected.", selectedChapters.size());
                     mangadex.downloadManga(title, selectedChapters);
                 }
             }

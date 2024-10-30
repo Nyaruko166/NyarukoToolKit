@@ -2,6 +2,8 @@ package Util;
 
 import Model.AppConfig;
 import com.google.gson.Gson;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.jline.utils.Log;
 
 import java.io.File;
@@ -9,6 +11,8 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 
 public class Config {
+
+    Logger log = LogManager.getLogger(Config.class);
 
     private static Config instance;
 
@@ -32,6 +36,12 @@ public class Config {
     }
 
     public AppConfig getProperty() {
+
+        if (appConfig.getDiscord_bot_api() == null || appConfig.getDiscord_bot_api().isBlank()) {
+            log.error("Please put discord_bot_api into \"./libs/config.json\".\"");
+            System.exit(1);
+        }
+
         return appConfig;
     }
 

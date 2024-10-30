@@ -5,6 +5,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -27,7 +29,7 @@ public class ApiHelper {
                 .build();
         try (Response response = client.newCall(request).execute()) {
             if (response.isSuccessful() && response.body() != null) {
-                // Print the response from the MangaDex API
+                // Response from the MangaDex API
                 return response.body().string();
             } else {
                 log.error("Failed to fetch data: {}", response.message());
@@ -45,12 +47,15 @@ public class ApiHelper {
                 .url(url)
                 .post(requestBody)
                 .build();
-        try (Response response = client.newCall(request).execute()) {
-            if (response.isSuccessful() && response.body() != null) {
-                // Print the response from the MangaDex API
-                return response.body().string();
-            } else {
-                log.error("Failed to post data: {}", response.message());
+
+        try {
+            try (Response response = client.newCall(request).execute()) {
+                if (response.isSuccessful() && response.body() != null) {
+                    // Print the response from the MangaDex API
+                    return response.body().string();
+                } else {
+                    log.error("Failed to post data: {}", response.message());
+                }
             }
         } catch (IOException e) {
             log.error(e);
