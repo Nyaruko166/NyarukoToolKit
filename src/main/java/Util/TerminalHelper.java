@@ -3,6 +3,8 @@ package Util;
 import org.jline.terminal.Terminal;
 import org.jline.utils.AttributedString;
 
+import java.io.IOException;
+
 public class TerminalHelper {
 
     public static String colorLine(Terminal terminal, Color color, String content) {
@@ -42,6 +44,12 @@ public class TerminalHelper {
 
     public static void printLn(Terminal terminal, Color color, String content) {
         terminal.writer().println(colorLine(terminal, color, content));
+    }
+
+    public static void anyKeyToCont(Terminal terminal) throws IOException {
+        printLn(terminal, Color.CYAN, "Press any key to continue...");
+        terminal.flush();
+        terminal.reader().read();
     }
 
 }

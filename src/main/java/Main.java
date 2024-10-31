@@ -3,7 +3,9 @@ import Connector.Nettruyen;
 import Connector.TruyenQQ;
 import Model.AppConfig;
 import Model.Chapter;
+import Model.VideoIndex;
 import Util.*;
+import Util.Color;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -17,6 +19,7 @@ import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 import org.jline.utils.InfoCmp;
 
+import java.awt.*;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -47,15 +50,6 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
 
-//        if (true) {
-//            JsonObject jsonObject = new JsonObject();
-//            jsonObject.addProperty("videoId", "yhCo53wHTeY");
-//            String url = Config.getInstance().getProperty().getDiscord_bot_api() + "/discord/send-clip";
-//            ApiHelper.postRequest(url,
-//                    ApiHelper.requestBodyBuilder(jsonObject.toString()));
-//            System.exit(0);
-//        }
-
         // Create a key map to bind keys to specific actions
         keyMap.bind("UP", "w");
         keyMap.bind("DOWN", "s");
@@ -66,11 +60,20 @@ public class Main {
         //Todo: Check box still not have quit and back yet
         keyMap.bind("QUIT", "q");
 
+        Terminal terminal = TerminalBuilder.builder().system(true).jansi(true).build();
+
+//        if (true) {
+//            String path = "D:\\Videos\\Outplayed\\GTFO\\GTFO_10-29-2024_23-14-26-774\\index.json";
+//            Desktop desktop = Desktop.getDesktop();
+//            desktop.open(new File(path));
+//            uploadToYoutube(terminal);
+//            System.exit(0);
+//        }
+
         firstTimeConfig();
         log.info("Reading config...");
         loadedConfig = gson.fromJson(new FileReader(configFile), AppConfig.class);
 
-        Terminal terminal = TerminalBuilder.builder().system(true).jansi(true).build();
 //        terminal.enterRawMode();
         menuConsole(terminal);
 //        checkboxConsole(terminal);
@@ -80,9 +83,7 @@ public class Main {
         if (YtdlUtil.downloadLastedVersion(loadedConfig) == null) {
             log.info("You're up to date!");
         }
-        log.info("Press any key to continue...");
-        terminal.flush();
-        terminal.reader().read();
+        TerminalHelper.anyKeyToCont(terminal);
     }
 
 
@@ -106,9 +107,7 @@ public class Main {
 
         }
 
-        terminal.flush();
-        log.info("Press any key to continue...");
-        terminal.reader().read();
+        TerminalHelper.anyKeyToCont(terminal);
     }
 
     private static void uploadToYoutube(Terminal terminal) throws IOException {
@@ -126,27 +125,77 @@ public class Main {
 
         File noUpload = new File(videoFolder + "/.noupload");
         if (noUpload.exists()) {
-            log.info("Found .noupload, this folder already upload to youtube or user don't want to upload!");
+            log.info("Found .noupload, this folder already uploaded to youtube or user don't want to upload!");
+            TerminalHelper.anyKeyToCont(terminal);
             return;
         }
+
         //Todo handle not found index.json or make new one in cli or some shit
         File indexFile = new File(videoFolder + "/index.json");
-        if (indexFile.exists()) {
-            log.info("Found index.json");
+
+        if (!indexFile.exists()) {
+            List<VideoIndex> lstIndex = new ArrayList<>();
+            File[] fileArray = videoFolder.toFile().listFiles((dir, name) -> name.endsWith(".mp4")); //Get only .mp4
+            for (File file : fileArray) {
+                lstIndex.add(new VideoIndex("", "/" + file.getName()));
+            }
+            JsonArray jsonArray = gson.toJsonTree(lstIndex).getAsJsonArray();
+            FileUtils.writeStringToFile(indexFile, jsonArray.toString(), "UTF-8");
         }
+
+        log.info("Created index.json file, Opening index.json");
+        log.info("Insert your title for each clip");
+        Desktop.getDesktop().open(indexFile);
+        TerminalHelper.anyKeyToCont(terminal);
+        Boolean result = true;
+        Boolean state = true;
+        do {
+            result = yesNoConsole(terminal, "Have you name all the clips yet?");
+            if (result == null) {
+                indexFile.delete();
+                log.info("Deleted index.json file");
+                TerminalHelper.anyKeyToCont(terminal);
+                //sus
+                break;
+            }
+            //Yes no question
+            if (result) {
+                JsonArray jsonArray = gson.fromJson(new FileReader(indexFile), JsonArray.class);
+                for (JsonElement jsonElement : jsonArray) {
+                    if (jsonElement.getAsJsonObject().get("title").getAsString().isBlank()) {
+                        log.error("Title is blank, please double check this path {}",
+                                jsonElement.getAsJsonObject().get("path").getAsString());
+                        TerminalHelper.anyKeyToCont(terminal);
+                        break;
+                    } else {
+                        log.info("Please close index.json file editor window...");
+                        state = false;
+                    }
+                }
+            } else {
+                continue;
+            }
+        } while (state);
+
+        if (result == null) {
+            if (indexFile.exists()) {
+                FileUtils.deleteQuietly(indexFile);
+            }
+            return;
+        }
+
+        log.info("Found index.json");
         JsonArray jsonArray = gson.fromJson(new FileReader(indexFile), JsonArray.class);
         for (JsonElement element : jsonArray) {
-            JsonObject jsonObject = element.getAsJsonObject();
-            YoutubeUtil.uploadVideo(jsonObject.get("title").getAsString(),
-                    new File(videoFolder + jsonObject.get("path").getAsString()));
+            VideoIndex videoIndex = gson.fromJson(element, VideoIndex.class);
+            YoutubeUtil.uploadVideo(videoIndex.getTitle(), new File(videoFolder + videoIndex.getPath()));
         }
 
         //Mark as done
+        log.info("Created .nopload file");
         noUpload.createNewFile();
 
-        terminal.flush();
-        log.info("Press any key to continue...");
-        terminal.reader().read();
+        TerminalHelper.anyKeyToCont(terminal);
     }
 
     private static void mangaCrawler(Terminal terminal) throws IOException {
@@ -219,9 +268,6 @@ public class Main {
             }
         }
 
-        terminal.flush();
-        log.info("Press any key to continue...");
-        terminal.reader().read();
     }
 
     // Method to handle the selected option
@@ -236,10 +282,54 @@ public class Main {
         }
     }
 
+    private static Boolean yesNoConsole(Terminal terminal, String log) {
+
+        List<String> options = Arrays.asList("Yes", "No");
+
+        BindingReader bindingReader = new BindingReader(terminal.reader());
+
+        int selectedIndex = 0;
+
+        while (true) {
+            terminal.puts(InfoCmp.Capability.clear_screen);
+            if (log != null) TerminalHelper.printLn(terminal, Color.CYAN, log);
+            TerminalHelper.printLn(terminal, Color.GREEN, "==> Up/Down with W/S");
+            TerminalHelper.printLn(terminal, Color.GREEN, "==> Cancel/Confirm with Q/E");
+
+            printMenu(options, selectedIndex);
+
+            String key = bindingReader.readBinding(keyMap);
+
+            if (key == null) {
+                continue; // Skip if no valid key pressed
+            }
+
+            switch (key) {
+                case "UP":
+                    selectedIndex = (selectedIndex > 0) ? selectedIndex - 1 : options.size() - 1;
+                    break;
+                case "DOWN":
+                    selectedIndex = (selectedIndex < options.size() - 1) ? selectedIndex + 1 : 0;
+                    break;
+                case "QUIT":
+                    TerminalHelper.printLn(terminal, Color.RED, "Deleting index.json...");
+                    terminal.flush();
+                    return null;
+                case "ENTER":
+                    terminal.writer().println("Selected: " + options.get(selectedIndex));
+                    terminal.flush();
+                    if (options.get(selectedIndex).equalsIgnoreCase("Yes")) return true;
+                    return false;
+                default:
+                    break;
+            }
+        }
+
+    }
+
     private static void menuConsole(Terminal terminal) {
 
-        List<String> options = Arrays.asList("Check for update", "Download video from youtube", "Download manga to PDF",
-                "Upload video to YT and send to Discord");
+        List<String> options = Arrays.asList("Check for update", "Download video from youtube", "Download manga to PDF", "Upload video to YT and send to Discord");
 
         try {
             BindingReader bindingReader = new BindingReader(terminal.reader());
