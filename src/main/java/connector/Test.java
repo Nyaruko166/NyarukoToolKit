@@ -1,4 +1,4 @@
-package Connector;
+package connector;
 
 public class Test {
 

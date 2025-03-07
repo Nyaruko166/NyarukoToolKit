@@ -1,15 +1,14 @@
-import Connector.Mangadex;
-import Connector.Nettruyen;
-import Connector.TruyenQQ;
-import Model.AppConfig;
-import Model.Chapter;
-import Model.VideoIndex;
-import Util.*;
-import Util.Color;
+import connector.Mangadex;
+import connector.Nettruyen;
+import connector.TruyenQQ;
+import model.AppConfig;
+import model.Chapter;
+import model.VideoIndex;
+import util.*;
+import util.Color;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -61,14 +60,6 @@ public class Main {
         keyMap.bind("QUIT", "q");
 
         Terminal terminal = TerminalBuilder.builder().system(true).jansi(true).build();
-
-//        if (true) {
-//            String path = "D:\\Videos\\Outplayed\\GTFO\\GTFO_10-29-2024_23-14-26-774\\index.json";
-//            Desktop desktop = Desktop.getDesktop();
-//            desktop.open(new File(path));
-//            uploadToYoutube(terminal);
-//            System.exit(0);
-//        }
 
         firstTimeConfig();
         log.info("Reading config...");
@@ -145,6 +136,7 @@ public class Main {
 
         log.info("Created index.json file, Opening index.json");
         log.info("Insert your title for each clip");
+        //Todo: using ProcessBuilder instead
         Desktop.getDesktop().open(indexFile);
         TerminalHelper.anyKeyToCont(terminal);
         Boolean result = true;

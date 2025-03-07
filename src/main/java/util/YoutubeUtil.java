@@ -1,6 +1,6 @@
-package Util;
+package util;
 
-import Handler.FileUploadProgressListener;
+import handler.FileUploadProgressListener;
 import com.google.api.client.googleapis.media.MediaHttpUploader;
 import com.google.api.client.http.FileContent;
 import com.google.api.services.youtube.YouTube;
@@ -85,9 +85,8 @@ public class YoutubeUtil {
             JsonObject jsonObject = new JsonObject();
             jsonObject.addProperty("videoId", videoId);
             String url = Config.getInstance().getProperty().getDiscord_bot_api() + "/discord/send-clip";
-            ApiHelper.postRequest(url, ApiHelper.requestBodyBuilder(jsonObject.toString()));
-//            log.info(res);
-
+            String res = ApiHelper.postRequest(url, ApiHelper.requestBodyBuilder(jsonObject.toString()));
+            log.info(res);
             log.warn("Sleep for 5s...");
             Thread.sleep(5000);
         } catch (IOException | InterruptedException e) {

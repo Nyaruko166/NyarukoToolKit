@@ -1,7 +1,7 @@
-package Connector;
+package connector;
 
-import Model.Chapter;
-import Util.Config;
+import model.Chapter;
+import util.Config;
 import com.google.gson.Gson;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

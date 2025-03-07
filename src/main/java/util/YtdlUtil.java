@@ -1,6 +1,6 @@
-package Util;
+package util;
 
-import Model.AppConfig;
+import model.AppConfig;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -8,6 +8,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
+import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
@@ -66,7 +67,8 @@ public class YtdlUtil {
             try {
                 log.info("Getting information...");
                 Document document = Jsoup.connect(downloadUrl).get();
-                return document.title().replaceAll(" - YouTube$", "");
+                String rawTitle = document.title().replaceAll(" - YouTube$", "");
+                return rawTitle.replaceAll("[/\\\\]", "-"); //Remove /,\
             } catch (IOException e) {
                 log.error(e);
             }
@@ -88,7 +90,7 @@ public class YtdlUtil {
         try {
             log.info("Downloading video...");
             log.info("Check other tab for more information...");
-            Process process = Runtime.getRuntime().exec(command.formatted(customArgs.toString()));
+            Runtime.getRuntime().exec(command.formatted(customArgs.toString()));
             return true;
         } catch (Exception e) {
             log.error(e);
@@ -99,7 +101,7 @@ public class YtdlUtil {
 
     private static Boolean ytUrlValidate(String downloadUrl) {
 
-        String regex = "(?:https?://)?(?:www\\.)?(?:youtube\\.com/watch\\?v=|youtu\\.be/)([\\w-]{11})(?:[&?][\\w=%-]*)*";
+        String regex = "(?:https?://)?(?:www\\.)?(?:youtube\\.com/(?:watch\\?v=|shorts/)|youtu\\.be/)([\\w-]{11})(?:[&?][\\w=%-]*)*";
         Pattern pattern = Pattern.compile(regex);
 
         Matcher matcher = pattern.matcher(downloadUrl);

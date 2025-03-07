@@ -1,9 +1,9 @@
-package Connector;
+package connector;
 
-import Model.Chapter;
-import Model.MangadexCover;
-import Util.ApiHelper;
-import Util.PDFHelper;
+import model.Chapter;
+import model.MangadexCover;
+import util.ApiHelper;
+import util.PDFHelper;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;

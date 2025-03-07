@@ -1,4 +1,4 @@
-package Util;
+package util;
 
 import com.lowagie.text.Document;
 import com.lowagie.text.DocumentException;

@@ -1,4 +1,4 @@
-package LcLib;
+package lclib;
 
 import java.util.ArrayList;
 import java.util.Collection;

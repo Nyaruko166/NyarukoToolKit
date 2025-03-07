@@ -1,6 +1,6 @@
-package Util;
+package util;
 
-import Model.AppConfig;
+import model.AppConfig;
 import com.google.gson.Gson;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
