@@ -87,6 +87,13 @@ public class YtdlUtil {
                 -o "%(title)s.%(ext)s" -f "bv+ba/b" -S "ext" --write-subs --sub-langs "all, -live_chat"\s
                 --sub-format "best" --write-thumbnail""").add(downloadUrl);
 
+        //"yt-dlp.exe"
+        // -o "%(title)s.%(ext)s"
+        // -f "bv+ba/b"
+        // -S "ext"
+        // --write-subs --sub-langs "all, -live_chat" --sub-format "best" --write-thumbnail --convert-thumbnails "png"
+        // https://youtu.be/X_4pIzwShRw?si=RdyEv_hBoGjbMFNi
+
         try {
             log.info("Downloading video...");
             log.info("Check other tab for more information...");

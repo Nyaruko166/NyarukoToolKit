@@ -1,14 +1,12 @@
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import connector.Mangadex;
 import connector.Nettruyen;
 import connector.TruyenQQ;
 import model.AppConfig;
 import model.Chapter;
 import model.VideoIndex;
-import util.*;
-import util.Color;
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -17,6 +15,11 @@ import org.jline.keymap.KeyMap;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 import org.jline.utils.InfoCmp;
+import util.Color;
+import util.Config;
+import util.TerminalHelper;
+import util.YoutubeUtil;
+import util.YtdlUtil;
 
 import java.awt.*;
 import java.io.File;
@@ -71,8 +74,13 @@ public class Main {
     }
 
     private static void checkForUpdate(Terminal terminal) throws IOException {
-        if (YtdlUtil.downloadLastedVersion(loadedConfig) == null) {
+        AppConfig appConfig = YtdlUtil.downloadLastedVersion(loadedConfig);
+        if (appConfig == null) {
             log.info("You're up to date!");
+        } else {
+            //Todo Handle update config
+            Config.getInstance().updateConfig(appConfig);
+            log.info("Update YT-DLP completed!");
         }
         TerminalHelper.anyKeyToCont(terminal);
     }
@@ -81,12 +89,11 @@ public class Main {
     private static void downloadYT(Terminal terminal) throws IOException {
 
         while (true) {
-
             log.info("Enter video url: ");
             String videoUrl = scanner.nextLine();
             String title = YtdlUtil.fetchTitle(videoUrl);
             if (title != null) {
-                Path path = Paths.get(loadedConfig.getWorking_directory() + "\\Videos\\" + title);
+                Path path = Paths.get(loadedConfig.getWorking_directory() + "/Videos/" + title);
                 Files.createDirectories(path);
                 log.info("Created folder at {}", path.toString());
                 YtdlUtil.downloadVideo(videoUrl, path.toString());
@@ -95,7 +102,6 @@ public class Main {
 
             terminal.puts(InfoCmp.Capability.clear_screen);
             log.error("Please enter a valid video url!");
-
         }
 
         TerminalHelper.anyKeyToCont(terminal);
